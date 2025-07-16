@@ -1,0 +1,357 @@
+// Full AML Data Model (33 Tables) - dbdiagram.io compatible DBML
+// Paste into https://dbdiagram.io/ to visualize the complete model
+
+// ==================== DIMENSION TABLES ====================
+Table Dim_Customer {
+  Customer_ID varchar [pk]
+  Name varchar
+  DOB date
+  Nationality varchar
+  Income_Level decimal
+  PEP_Flag boolean
+  Marital_Status varchar
+  Industry_Code varchar
+  ID_Type varchar
+  ID_Number varchar
+  Address varchar
+  Phone varchar
+  Email varchar
+  Customer_Open_Date date
+  Branch_ID varchar
+}
+
+Table Dim_Account {
+  Account_ID varchar [pk]
+  Customer_ID varchar
+  Account_Type varchar
+  Open_Date date
+  Close_Date date
+  Account_Status varchar
+  Currency varchar
+  Branch_ID varchar
+}
+
+Table Dim_Transaction_Type {
+  Transaction_Type_ID varchar [pk]
+  Transaction_Code varchar
+  Description varchar
+}
+
+Table Dim_Country {
+  Country_Code varchar [pk]
+  Country_Name varchar
+  Risk_Level varchar
+  Sanctioned_Flag boolean
+}
+
+Table Dim_Channel {
+  Channel_ID varchar [pk]
+  Channel_Code varchar
+  Channel_Name varchar
+  Digital_Flag boolean
+}
+
+Table Dim_Time {
+  Date_ID date [pk]
+  Year int
+  Month int
+  Quarter int
+  Week int
+  Day_of_Week varchar
+}
+
+Table Dim_Risk_Level {
+  Risk_Level_ID varchar [pk]
+  Level_Name varchar
+  Score_Threshold int
+  Description varchar
+}
+
+Table Dim_Alert_Type {
+  Alert_Type_ID varchar [pk]
+  Scenario_Name varchar
+  Detection_Rule text
+  Severity_Level varchar
+}
+
+Table Dim_PEP_List {
+  National_ID varchar [pk]
+  Name varchar
+  Country varchar
+  Position varchar
+  Last_Verified_Date date
+}
+
+Table Dim_KYC_Event {
+  KYC_Event_ID varchar [pk]
+  Customer_ID varchar
+  Change_Type varchar
+  Old_Value text
+  New_Value text
+  Change_Date date
+}
+
+Table Dim_Branch {
+  Branch_ID varchar [pk]
+  Branch_Code varchar
+  Branch_Name varchar
+  Region varchar
+  Open_Date date
+}
+
+Table Dim_Employment {
+  Employer_ID varchar [pk]
+  Customer_ID varchar
+  Job_Title varchar
+  Company_Name varchar
+  Industry varchar
+  Income_Source varchar
+  Verification_Date date
+}
+
+Table Dim_Transaction_Reason {
+  Reason_Code varchar [pk]
+  Reason_Desc varchar
+  Risk_Level varchar
+}
+
+Table Dim_Party {
+  Party_ID varchar [pk]
+  Party_Type varchar
+  Party_Name varchar
+  Registration_Number varchar
+  Country varchar
+  Address varchar
+  Status varchar
+  Is_Customer_Flag boolean
+}
+
+Table Dim_Party_Role {
+  Role_ID varchar [pk]
+  Role_Name varchar
+  Description varchar
+}
+
+Table Dim_Collateral_Type {
+  Collateral_Type_ID varchar [pk]
+  Name varchar
+  Category varchar
+  Liquidity_Score int
+  Accepted_For_Loan_Flag boolean
+}
+
+Table Dim_Asset {
+  Asset_ID varchar [pk]
+  Asset_Type varchar
+  Description varchar
+  Registration_No varchar
+  Currency varchar
+  Purchase_Date date
+  Customer_ID varchar
+  Country varchar
+  Asset_Status varchar
+}
+
+Table Dim_Customer_Asset_Ownership {
+  Customer_ID varchar
+  Asset_ID varchar
+  Ownership_Type varchar
+  Ownership_Percentage decimal
+  Declaration_Date date
+}
+
+// ==================== FACT TABLES ====================
+Table Fact_Transaction {
+  Transaction_ID varchar [pk]
+  From_Account_ID varchar
+  To_Account_ID varchar
+  Amount decimal
+  Transaction_Type_ID varchar
+  Booking_Date date
+  Channel_ID varchar
+  Country_Code varchar
+  Transaction_Reason varchar
+  Currency varchar
+}
+
+Table Fact_Loan_Repayment {
+  Loan_ID varchar [pk]
+  Customer_ID varchar
+  Repayment_Date date
+  Repayment_Amount decimal
+  Principal_Component decimal
+  Interest_Component decimal
+  Repayment_Method varchar
+  Remaining_Balance decimal
+}
+
+Table Fact_Card_Transaction {
+  Card_Txn_ID varchar [pk]
+  Card_ID varchar
+  Customer_ID varchar
+  Txn_Date date
+  Amount decimal
+  Merchant varchar
+  Country varchar
+  Channel_ID varchar
+  Txn_Type varchar
+}
+
+Table Fact_Deposit {
+  Deposit_ID varchar [pk]
+  Customer_ID varchar
+  Deposit_Type varchar
+  Start_Date date
+  Maturity_Date date
+  Amount decimal
+  Interest_Rate decimal
+  Branch_ID varchar
+}
+
+Table Fact_Cash_Deposit_Withdrawal {
+  Txn_ID varchar [pk]
+  Account_ID varchar
+  Txn_Date date
+  Txn_Type varchar
+  Amount decimal
+  Channel varchar
+  Location varchar
+  Handled_By varchar
+}
+
+Table Fact_Customer_Balance {
+  Customer_ID varchar
+  Account_ID varchar
+  Date_ID date
+  Closing_Balance decimal
+  Currency varchar
+}
+
+Table Fact_Customer_Income {
+  Customer_ID varchar
+  Month date
+  Inflow_Amount decimal
+  Inflow_Source varchar
+  Income_Type varchar
+  Estimation_Method varchar
+}
+
+Table Fact_Alert {
+  Alert_ID varchar [pk]
+  Customer_ID varchar
+  Alert_Type_ID varchar
+  Triggered_On date
+  Triggered_By_Rule varchar
+  Severity varchar
+  Status varchar
+  Review_Outcome varchar
+}
+
+Table Fact_Risk_Score {
+  Customer_ID varchar
+  Score_Date date
+  Score_Value decimal
+  Score_Band varchar
+  Driving_Rules text
+  Override_Flag boolean
+}
+
+Table Fact_Transaction_Peer_Pair {
+  From_Customer_ID varchar
+  To_Customer_ID varchar
+  Window_Days int
+  Txn_Count int
+  Total_Amount decimal
+  First_Txn_Date date
+  Bidirectional_Flag boolean
+}
+
+Table Fact_Collateral_Assignment {
+  Loan_ID varchar
+  Collateral_ID varchar
+  Customer_ID varchar
+  Assigned_Date date
+  Collateral_Value decimal
+  Current_Value decimal
+  LTV decimal
+  Currency varchar
+}
+
+Table Fact_Asset_Valuation {
+  Asset_ID varchar
+  Valuation_Date date
+  Valuation_Amount decimal
+  Source varchar
+  Valuation_Type varchar
+  Currency varchar
+}
+
+Table Fact_Party_Linkage {
+  Customer_ID varchar
+  Party_ID varchar
+  Link_Type varchar
+  Link_Evidence text
+  Relationship_Start date
+  Confidence_Score decimal
+}
+
+Table Fact_Customer_Wealth_Profile {
+  Customer_ID varchar
+  Date_ID date
+  Total_Balance decimal
+  Total_Assets decimal
+  Estimated_Income decimal
+  Loan_Exposure decimal
+  Wealth_Tier varchar
+}
+
+Table Fact_KYC_Change_Log {
+  Customer_ID varchar
+  Change_Field varchar
+  Old_Value text
+  New_Value text
+  Change_Timestamp timestamp
+  Change_Reason varchar
+  Initiated_By varchar
+}
+
+// ==================== RELATIONSHIPS ====================
+Ref: Dim_Account.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Transaction.From_Account_ID > Dim_Account.Account_ID
+Ref: Fact_Transaction.To_Account_ID > Dim_Account.Account_ID
+Ref: Fact_Transaction.Transaction_Type_ID > Dim_Transaction_Type.Transaction_Type_ID
+Ref: Fact_Transaction.Channel_ID > Dim_Channel.Channel_ID
+Ref: Fact_Transaction.Country_Code > Dim_Country.Country_Code
+Ref: Fact_Loan_Repayment.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Customer_Balance.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Customer_Balance.Account_ID > Dim_Account.Account_ID
+Ref: Fact_Customer_Balance.Date_ID > Dim_Time.Date_ID
+Ref: Fact_Alert.Alert_Type_ID > Dim_Alert_Type.Alert_Type_ID
+Ref: Fact_Alert.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Risk_Score.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Transaction_Peer_Pair.From_Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Transaction_Peer_Pair.To_Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Collateral_Assignment.Collateral_ID > Dim_Asset.Asset_ID
+Ref: Fact_Collateral_Assignment.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Asset_Valuation.Asset_ID > Dim_Asset.Asset_ID
+Ref: Fact_Party_Linkage.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Party_Linkage.Party_ID > Dim_Party.Party_ID
+Ref: Fact_Customer_Wealth_Profile.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Customer_Wealth_Profile.Date_ID > Dim_Time.Date_ID
+Ref: Fact_KYC_Change_Log.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Customer.Branch_ID > Dim_Branch.Branch_ID
+Ref: Dim_Asset.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Customer_Asset_Ownership.Asset_ID > Dim_Asset.Asset_ID
+Ref: Dim_Customer_Asset_Ownership.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Employment.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_KYC_Event.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Customer_Income.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Cash_Deposit_Withdrawal.Account_ID > Dim_Account.Account_ID
+Ref: Fact_Deposit.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Card_Transaction.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Card_Transaction.Channel_ID > Dim_Channel.Channel_ID
+Ref: Fact_Transaction.Transaction_Reason > Dim_Transaction_Reason.Reason_Code
+Ref: Fact_Risk_Score.Score_Band > Dim_Risk_Level.Level_Name
+Ref: Dim_PEP_List.National_ID > Dim_Customer.ID_Number
+Ref: Fact_Party_Linkage.Link_Type > Dim_Party_Role.Role_Name
+Ref: Dim_Collateral_Type.Collateral_Type_ID > Dim_Asset.Asset_Type
