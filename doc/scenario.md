@@ -165,3 +165,58 @@ Below is a comprehensive list of **Anti-Money Laundering (AML) detection scenari
 **Examples:**
 - 12 USD/VND exchanges totaling 120M VND in 5 days  
 - No overseas travel history or declared FX usage
+
+---
+
+## 🔍 16. KYC Profile Drift Over Time
+**Description:** KYC information changes repeatedly or drastically in a short period.  
+**Rule:**  
+- If ≥ 3 changes to KYC profile (e.g., address, income, ID) in 30 days → flag
+
+**Examples:**
+- Changed address, ID number, and income level within 2 weeks  
+- Inconsistent nationality and phone/email across snapshots
+
+---
+
+## 🔍 17. Frequent Employer Changes
+**Description:** Customer switches employment or job titles too often, indicating instability.  
+**Rule:**  
+- If `Dim_Employment` shows ≥ 3 distinct employers in 90 days → review needed
+
+**Examples:**
+- Works at 3 companies in 2 months  
+- Inconsistent industry or income source
+
+---
+
+## 🔍 18. Wealth Tier Fluctuation Without Explanation
+**Description:** Customer moves between wealth tiers rapidly without supporting evidence.  
+**Rule:**  
+- If `Wealth_Tier` changes 2+ times in 60 days → validate with transactions/inflows
+
+**Examples:**
+- Affluent → HNW → Mass in 6 weeks  
+- No matching salary increase or asset event
+
+---
+
+## 🔍 19. Inconsistent Balance vs. Transactions
+**Description:** Balance changes don't align with transaction volume.  
+**Rule:**  
+- If ∆ Balance ≠ Net Transaction Amount ± 10% → anomaly
+
+**Examples:**
+- Balance jumps by 1B VND with no recorded inflow  
+- Declared income does not explain balance spike
+
+---
+
+## 🔍 20. Rule Change Immediately Before Alert
+**Description:** Compliance rule was modified shortly before it triggered an alert.  
+**Rule:**  
+- If rule severity reduced or threshold raised within 48h before alert → flag override risk
+
+**Examples:**
+- Rule threshold raised from 500M → 800M the day before a transaction of 750M was flagged  
+- Alert fired from relaxed rule

@@ -160,6 +160,66 @@ Table Dim_Customer_Asset_Ownership {
   Declaration_Date date
 }
 
+Table Dim_Customer_Wealth_Profile {
+  Customer_ID varchar [pk]
+  Date_ID date
+  Total_Balance decimal
+  Total_Assets decimal
+  Estimated_Income decimal
+  Loan_Exposure decimal
+  Wealth_Tier varchar
+}
+
+Table Dim_Account_Balance_Snapshot {
+  Account_ID varchar [pk]
+  Customer_ID varchar
+  Balance_Date date
+  Current_Balance decimal
+  Available_Balance decimal
+  Currency varchar
+  Account_Status varchar
+  Overdraft_Limit decimal
+  Branch_ID varchar
+}
+
+Table Dim_KYC_Profile_Snapshot {
+  Customer_ID varchar [pk]
+  Name varchar
+  DOB date
+  Nationality varchar
+  ID_Type varchar
+  ID_Number varchar
+  Address varchar
+  Income_Level decimal
+  Marital_Status varchar
+  Phone varchar
+  Email varchar
+  Customer_Open_Date date
+  PEP_Flag boolean
+}
+
+Table Dim_Compliance_Rule_Snapshot {
+  Rule_ID varchar [pk]
+  Rule_Name varchar
+  Rule_SQL text
+  Severity_Level varchar
+  Thresholds varchar
+  Effective_Date date
+  Rule_Group varchar
+  Is_Enabled boolean
+}
+
+Table Hist_Dim_Employment {
+  Employer_ID varchar
+  Customer_ID varchar
+  Job_Title varchar
+  Company_Name varchar
+  Industry varchar
+  Income_Source varchar
+  Verification_Date date
+  ds_partition_date date
+}
+
 // ==================== FACT TABLES ====================
 Table Fact_Transaction {
   Transaction_ID varchar [pk]
@@ -355,3 +415,10 @@ Ref: Fact_Risk_Score.Score_Band > Dim_Risk_Level.Level_Name
 Ref: Dim_PEP_List.National_ID > Dim_Customer.ID_Number
 Ref: Fact_Party_Linkage.Link_Type > Dim_Party_Role.Role_Name
 Ref: Dim_Collateral_Type.Collateral_Type_ID > Dim_Asset.Asset_Type
+Ref: Dim_Customer_Wealth_Profile.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Customer_Wealth_Profile.Date_ID > Dim_Time.Date_ID
+Ref: Dim_Account_Balance_Snapshot.Account_ID > Dim_Account.Account_ID
+Ref: Dim_Account_Balance_Snapshot.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_KYC_Profile_Snapshot.Customer_ID > Dim_Customer.Customer_ID
+Ref: Hist_Dim_Employment.Customer_ID > Dim_Customer.Customer_ID
+Ref: Fact_Alert.Triggered_By_Rule > Dim_Compliance_Rule_Snapshot.Rule_ID

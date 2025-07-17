@@ -1,53 +1,55 @@
-## 📜 Table: Fact_Customer_Wealth_Profile
+## 📜 Table: Dim_Customer_Wealth_Profile
 
-This table provides a daily or periodic snapshot of a customer’s financial standing. It aggregates total balance, assets, income, and liabilities to assign a dynamic wealth tier classification. Used in customer segmentation, marketing, and risk-based onboarding.
+This dimension captures the estimated financial position of a customer, including assets, liabilities, income, and wealth classification. Implemented as `SCD4a`, it provides full daily snapshots to support behavioral trend analysis, regulatory reporting, and ML features.
 
-- **Type**: Fact  
-- **CDC Type**: `1.3`  
-- **Writer Type**: `factUpsert`  
-- **Primary Key**: Composite key – `(Customer_ID, Date_ID)`  
-- **Partitioned By**: `ds_partition_date`  
-- **Description**: Reflects financial summary indicators and wealth tier classification per customer on a given date.
-
----
-
-### 🔗 Foreign Keys and Relationships:
-
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Customer_ID`  | `Dim_Customer`         | Customer reference  |
-| `Date_ID`      | `Dim_Time`             | Date of snapshot    |
+- **Type**: Dimension  
+- **CDC Type**: `1.3`
+- **Writer Type**: `scd4a`  
+- **Primary Key**: `Customer_ID`  
+- **Partitioned By**: `ds_partition_date` (in history table)  
+- **Snapshot Strategy**: Daily full overwrite to history table; latest view in main table
 
 ---
 
-### 📊 Key Columns:
+### 🧩 Main Table Schema (Latest Snapshot Only)
 
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                        | PK  | Note                    |
-|---------------------|----------|---------------------------|--------------------|----------------------------------------------------|-----|-------------------------|
-| `Customer_ID`       | VARCHAR  | `Customer_ID`             | VARCHAR            | Customer identifier                                | ✅  | FK to `Dim_Customer`    |
-| `Date_ID`           | DATE     | `Date_ID`                 | DATE               | Snapshot date                                      | ✅  | FK to `Dim_Time`        |
-| `Total_Balance`     | DECIMAL  | `Total_Balance`           | DECIMAL            | Total balance across all accounts                 |     |                         |
-| `Total_Assets`      | DECIMAL  | `Total_Assets`            | DECIMAL            | Estimated value of owned assets                   |     |                         |
-| `Estimated_Income`  | DECIMAL  | `Estimated_Income`        | DECIMAL            | Monthly or annual estimated income                |     |                         |
-| `Loan_Exposure`     | DECIMAL  | `Loan_Exposure`           | DECIMAL            | Outstanding liabilities or loans                  |     |                         |
-| `Wealth_Tier`       | VARCHAR  | `Wealth_Tier`             | VARCHAR            | Tier (e.g., Mass, Affluent, HNW) based on profile |     | Derived field           |
+| Column Name           | Type     | Description                                |
+|-----------------------|----------|--------------------------------------------|
+| `Customer_ID`         | VARCHAR  | Unique customer identifier                 |
+| `Date_ID`             | DATE     | Snapshot date (can be booking date)        |
+| `Total_Balance`       | DECIMAL  | Sum of customer balance across accounts    |
+| `Total_Assets`        | DECIMAL  | Estimated total asset value                |
+| `Estimated_Income`    | DECIMAL  | Estimated monthly/annual income            |
+| `Loan_Exposure`       | DECIMAL  | Total outstanding loan exposure            |
+| `Wealth_Tier`         | VARCHAR  | Wealth category (e.g., Mass, Affluent, HNW)|
 
----
-
-### 🧪 Technical Fields (for CDC + audit):
-
-| Raw Column Name        | Raw Type | Standardized Column Name | Standardized Type | Description                               | PK  | Note |
-|------------------------|----------|---------------------------|--------------------|-------------------------------------------|-----|------|
-| `cdc_change_type`      | STRING   | `cdc_change_type`         | STRING             | `'cdc_insert'` or `'cdc_update'`          |     | CDC 1.3 logic           |
-| `cdc_index`            | INT      | `cdc_index`               | INT                | Row sequence index                        |     | Optional                |
-| `scd_change_timestamp` | TIMESTAMP| `scd_change_timestamp`    | TIMESTAMP          | Timestamp of data load                    |     |                          |
-| `ds_partition_date`    | DATE     | `ds_partition_date`       | DATE               | Partition column (aligned with Date_ID)   |     |                          |
-| `created_at`           | TIMESTAMP| `created_at`              | TIMESTAMP          | Time record was first inserted            |     |                          |
-| `updated_at`           | TIMESTAMP| `updated_at`              | TIMESTAMP          | Last update timestamp                     |     |                          |
+#### 🧪 Technical Fields (Main Table):
+| Column Name            | Type       | Description                              |
+|------------------------|------------|------------------------------------------|
+| `scd_change_type`      | STRING     | 'cdc_insert' or 'cdc_update'             |
+| `cdc_index`            | INT        | Optional change order index              |
+| `scd_change_timestamp` | TIMESTAMP  | When this snapshot was loaded            |
+| `dtf_start_date`       | DATE       | Snapshot start date                      |
+| `dtf_end_date`         | DATE       | NULL = current, otherwise expiry date    |
+| `dtf_current_flag`     | BOOLEAN    | TRUE = current active snapshot           |
 
 ---
 
-### ✅ Notes:
-- Enables customer segmentation and personalized service models
-- Used for annual reviews, KYC enhancements, and creditworthiness scoring
-- Often joined with product holdings and transactional behavior
+### 🗃 History Table Schema (Full Snapshot Per Day)
+
+Same structure as Main Table, **plus:**
+
+| Column Name          | Type     | Description                                 |
+|----------------------|----------|---------------------------------------------|
+| `ds_partition_date`  | DATE     | Partition column = snapshot date            |
+
+- History table keeps **1 row per customer per snapshot day**
+- Enables full point-in-time reconstruction of wealth profile
+
+---
+
+### ✅ Business Use Cases
+- Detect sudden drop/increase in wealth across time
+- Identify inconsistencies between declared and observed behavior
+- Train ML models on time-series features like asset volatility
+- Reconstruct financial profile at the time of alerts or onboarding
