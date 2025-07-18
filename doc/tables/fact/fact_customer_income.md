@@ -30,6 +30,7 @@ This table estimates or records the monthly income of customers, based on transa
 | `Inflow_Source`     | VARCHAR  | `Inflow_Source`           | VARCHAR            | Source of inflow (e.g., salary, rental, transfer)|     |                          |
 | `Income_Type`       | VARCHAR  | `Income_Type`             | VARCHAR            | Type of income (e.g., regular, irregular)       |     |                          |
 | `Estimation_Method` | VARCHAR  | `Estimation_Method`       | VARCHAR            | How the income was estimated                    |     |                          |
+| *(N/A)*             | *(N/A)*  | `f_high_txn_to_income_ratio_flag` | BOOLEAN           | TRUE if total transaction outflows exceed 5× monthly declared income |     | AML scenario flag         |
 
 ---
 
@@ -46,7 +47,24 @@ This table estimates or records the monthly income of customers, based on transa
 
 ---
 
+### 🚩 Related AML Scenarios (Standardize → Insight)
+
+| AML Scenario Name                  | Flag at Standardize               | Used in Insight |
+|-----------------------------------|-----------------------------------|------------------|
+| High Transaction-to-Income Ratio  | `f_high_txn_to_income_ratio_flag` | ✅ Yes           |
+
+---
+
+### 🧠 Flag Logic Definitions
+
+| Flag Name                         | Type    | Logic                                                                 |
+|-----------------------------------|---------|-----------------------------------------------------------------------|
+| `f_high_txn_to_income_ratio_flag` | BOOLEAN | TRUE if sum(outflow transactions for the month) > 5 × `Inflow_Amount` |
+
+---
+
 ### ✅ Notes:
 - Uses **CDC 1.3** logic for upsert (merge by `Customer_ID` + `Month`)
 - Enables monthly income trend and customer affordability modeling
 - Can be sourced from both declared values and transactional inference
+- Flag supports AML profiling where declared income is disproportionately lower than spending

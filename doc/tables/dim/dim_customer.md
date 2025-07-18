@@ -1,64 +1,68 @@
 ## 📜 Table: Dim_Customer
 
-This dimension table stores detailed KYC and demographic attributes of each customer. It acts as a central reference in AML systems, linking to transaction, loan, and alert facts. Changes are tracked using Slowly Changing Dimension Type 2 (SCD2).
+This dimension table captures customer master data for AML and KYC purposes, including identity, contact details, PEP flags, industry, and address information. It is enriched with technical indicators to detect patterns like synthetic identity or fraud rings.
 
 - **Type**: Dimension  
 - **CDC Type**: `1.3`  
-- **Writer Type**: `scd2`  
-- **Primary Key**: `Customer_ID` (business key) + surrogate key (e.g., `Dim_Customer_ID`)  
-- **Partitioned By**: `ds_partition_date`  
-- **Description**: Holds the latest and historical customer profile attributes with SCD2 tracking logic.
+- **Writer Type**: `scd4a`  
+- **Primary Key**: `Customer_ID`  
+- **Partitioned By**: `ds_partition_date` (in history table only)  
+- **Description**: Central customer registry to support transaction mapping, KYC profiling, segmentation, and fraud detection.
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Branch_ID`    | `Dim_Branch`           | Home branch of the customer  |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name         | Raw Type | Standardized Column Name | Standardized Type | Description                               | PK  | Note                    |
-|--------------------------|----------|---------------------------|--------------------|-------------------------------------------|-----|-------------------------|
-| `Customer_ID`            | VARCHAR  | `Customer_ID`             | VARCHAR            | Unique customer identifier                | ✅  | Business key            |
-| `Name`                   | VARCHAR  | `Name`                    | VARCHAR            | Full name of the customer                 |     |                         |
-| `DOB`                    | DATE     | `DOB`                     | DATE               | Date of birth                            |     |                         |
-| `Nationality`            | VARCHAR  | `Nationality`             | VARCHAR            | Country of citizenship                   |     |                         |
-| `Income_Level`           | DECIMAL  | `Income_Level`            | DECIMAL            | Declared or inferred income level        |     |                         |
-| `PEP_Flag`               | BOOLEAN  | `PEP_Flag`                | BOOLEAN            | Politically exposed person indicator     |     |                         |
-| `Marital_Status`         | VARCHAR  | `Marital_Status`          | VARCHAR            | Single, Married, Divorced, etc.          |     |                         |
-| `Industry_Code`          | VARCHAR  | `Industry_Code`           | VARCHAR            | Customer's industry sector               |     |                         |
-| `ID_Type`                | VARCHAR  | `ID_Type`                 | VARCHAR            | Type of ID (e.g., Passport, ID Card)     |     |                         |
-| `ID_Number`              | VARCHAR  | `ID_Number`               | VARCHAR            | Official ID number                       |     | Sensitive (PII)         |
-| `Address`                | VARCHAR  | `Address`                 | VARCHAR            | Registered residential address           |     | PII                    |
-| `Phone`                  | VARCHAR  | `Phone`                   | VARCHAR            | Phone number                             |     | PII                    |
-| `Email`                  | VARCHAR  | `Email`                   | VARCHAR            | Email address                            |     | PII                    |
-| `Customer_Open_Date`     | DATE     | `Customer_Open_Date`      | DATE               | Date customer was onboarded              |     |                         |
-| `Branch_ID`              | VARCHAR  | `Branch_ID`               | VARCHAR            | Branch managing the relationship         |     | FK to `Dim_Branch`      |
-
----
-
-### 🧪 Technical Fields (for SCD2 tracking):
-
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|
-| `cdc_index`            | INT        | Sequence index for ordering changes           |
-| `scd_change_timestamp` | TIMESTAMP  | Time of SCD2 record capture                  |
-| `ds_partition_date`    | DATE       | Partition column                             |
-| `created_at`           | TIMESTAMP  | Record creation time                         |
-| `updated_at`           | TIMESTAMP  | Last update time (if any)                    |
-| `dtf_start_date`       | DATE       | SCD2 start date                              |
-| `dtf_end_date`         | DATE       | SCD2 end date                                |
-| `dtf_current_flag`     | BOOLEAN    | TRUE if row is currently active              |
+| Raw/Dim_Customer | Raw Type | Standardized/std_Customer | Standardized Type | Standardized/std_Customer_Hist | Description | PK | Note |
+|------------------|----------|----------------------------|-------------------|-------------------------------|-------------|----|------|
+| `Customer_ID` | VARCHAR | `Customer_ID` | VARCHAR | `Customer_ID` | Unique customer identifier | ✅ | |
+| `Name` | VARCHAR | `Name` | VARCHAR | `Name` | Full name of customer | | |
+| `DOB` | DATE | `DOB` | DATE | `DOB` | Date of birth | | |
+| `Nationality` | VARCHAR | `Nationality` | VARCHAR | `Nationality` | Country of citizenship | | |
+| `Income_Level` | DECIMAL | `Income_Level` | DECIMAL | `Income_Level` | Declared income level | | |
+| `PEP_Flag` | BOOLEAN | `PEP_Flag` | BOOLEAN | `PEP_Flag` | Politically exposed person indicator | | |
+| `Marital_Status` | VARCHAR | `Marital_Status` | VARCHAR | `Marital_Status` | Marital status | | |
+| `Industry_Code` | VARCHAR | `Industry_Code` | VARCHAR | `Industry_Code` | Code for customer's occupation | | |
+| `ID_Type` | VARCHAR | `ID_Type` | VARCHAR | `ID_Type` | Type of government ID | | |
+| `ID_Number` | VARCHAR | `ID_Number` | VARCHAR | `ID_Number` | ID/passport number | | Used in AML linkage |
+| `Address` | VARCHAR | `Address` | VARCHAR | `Address` | Residential address | | Shared linkage flag |
+| `Phone` | VARCHAR | `Phone` | VARCHAR | `Phone` | Contact number | | |
+| `Email` | VARCHAR | `Email` | VARCHAR | `Email` | Email address | | |
+| `Customer_Open_Date` | DATE | `Customer_Open_Date` | DATE | `Customer_Open_Date` | Date customer joined | | |
+| `Branch_ID` | VARCHAR | `Branch_ID` | VARCHAR | `Branch_ID` | Branch where account opened | | FK to `Dim_Branch` |
+| *(N/A)* | *(N/A)* | `f_duplicate_id_flag` | BOOLEAN | `f_duplicate_id_flag` | TRUE if same ID shared across multiple customers | | AML flag |
+| *(N/A)* | *(N/A)* | `f_shared_address_flag` | BOOLEAN | `f_shared_address_flag` | TRUE if address shared by 3+ customers | | AML flag |
+|Technical Fields (for CDC + audit + snapshot logic)|
+| | | `scd_change_type` | STRING | `scd_change_type` | `'cdc_insert'` or `'cdc_update'` | | CDC 1.3 logic |
+| | | `cdc_index` | INT | `cdc_index` | Monotonic ingestion checkpoint | | |
+| | | `scd_change_timestamp` | TIMESTAMP | `scd_change_timestamp` | Ingestion timestamp | | |
+| | | `dtf_start_date` | DATE | `dtf_start_date` | Snapshot start validity | | |
+| | | `dtf_end_date` | DATE | `dtf_end_date` | Snapshot end validity (NULL = current) | | |
+| | | `dtf_current_flag` | BOOLEAN | `dtf_current_flag` | TRUE if currently active | | |
+| | | | | `ds_partition_date` | Partition date in history table only | | Only in `_Hist` table |
 
 ---
 
-### ✅ Notes:
-- Implements SCD2 for full change history tracking
-- Contains PII fields — ensure proper masking and role-based access
-- Used by AML analysts, KYC compliance, and customer segmentation
-```
+### 🚩 Related AML Scenarios (Standardize → Insight)
+
+| AML Scenario Name | Flag at Standardize | Used in Insight |
+|------------------|---------------------|------------------|
+| Multiple Customers Linked to Same ID | `f_duplicate_id_flag` | ✅ Yes |
+| Multiple Customers Sharing Same Address | `f_shared_address_flag` | ✅ Yes |
+
+---
+
+### 🧠 Flag Logic Definitions
+
+| Flag Name | Type | Logic |
+|-----------|------|--------|
+| `f_duplicate_id_flag` | BOOLEAN | TRUE if `ID_Number` appears in ≥ 2 distinct `Customer_ID`s |
+| `f_shared_address_flag` | BOOLEAN | TRUE if `Address` is shared by ≥ 3 `Customer_ID`s |
+
+---
+
+### ✅ Notes
+
+- Used to detect synthetic identities, fake clusters, or money mule networks  
+- Source system must contain `created_at` and `updated_at` for CDC 1.3  
+- Flags are computed in `Standardize` layer  

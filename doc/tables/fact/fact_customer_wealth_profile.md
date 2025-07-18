@@ -3,7 +3,7 @@
 This dimension captures the estimated financial position of a customer, including assets, liabilities, income, and wealth classification. Implemented as `SCD4a`, it provides full daily snapshots to support behavioral trend analysis, regulatory reporting, and ML features.
 
 - **Type**: Dimension  
-- **CDC Type**: `1.3`
+- **CDC Type**: `1.3`  
 - **Writer Type**: `scd4a`  
 - **Primary Key**: `Customer_ID`  
 - **Partitioned By**: `ds_partition_date` (in history table)  
@@ -11,45 +11,31 @@ This dimension captures the estimated financial position of a customer, includin
 
 ---
 
-### 🧩 Main Table Schema (Latest Snapshot Only)
+### 📊 Key Columns (Standardize)
 
-| Column Name           | Type     | Description                                |
-|-----------------------|----------|--------------------------------------------|
-| `Customer_ID`         | VARCHAR  | Unique customer identifier                 |
-| `Date_ID`             | DATE     | Snapshot date (can be booking date)        |
-| `Total_Balance`       | DECIMAL  | Sum of customer balance across accounts    |
-| `Total_Assets`        | DECIMAL  | Estimated total asset value                |
-| `Estimated_Income`    | DECIMAL  | Estimated monthly/annual income            |
-| `Loan_Exposure`       | DECIMAL  | Total outstanding loan exposure            |
-| `Wealth_Tier`         | VARCHAR  | Wealth category (e.g., Mass, Affluent, HNW)|
-
-#### 🧪 Technical Fields (Main Table):
-| Column Name            | Type       | Description                              |
-|------------------------|------------|------------------------------------------|
-| `scd_change_type`      | STRING     | 'cdc_insert' or 'cdc_update'             |
-| `cdc_index`            | INT        | Optional change order index              |
-| `scd_change_timestamp` | TIMESTAMP  | When this snapshot was loaded            |
-| `dtf_start_date`       | DATE       | Snapshot start date                      |
-| `dtf_end_date`         | DATE       | NULL = current, otherwise expiry date    |
-| `dtf_current_flag`     | BOOLEAN    | TRUE = current active snapshot           |
-
----
-
-### 🗃 History Table Schema (Full Snapshot Per Day)
-
-Same structure as Main Table, **plus:**
-
-| Column Name          | Type     | Description                                 |
-|----------------------|----------|---------------------------------------------|
-| `ds_partition_date`  | DATE     | Partition column = snapshot date            |
-
-- History table keeps **1 row per customer per snapshot day**
-- Enables full point-in-time reconstruction of wealth profile
+| Raw/Dim_Customer_Wealth_Profile | Raw Type | Standardized/std_Customer_Wealth_Profile | Standardized Type | Standardized/std_Customer_Wealth_Profile_Hist | Description                                      | PK  | Note                             |
+|----------------------------------|----------|------------------------------------------|-------------------|-------------------------------------------------|--------------------------------------------------|-----|----------------------------------|
+| `Customer_ID`                   | VARCHAR  | `Customer_ID`                            | VARCHAR           | `Customer_ID`                                  | Unique customer identifier                      | ✅  |                                  |
+| `Date_ID`                       | DATE     | `Date_ID`                                | DATE              | `Date_ID`                                      | Snapshot date (can be booking date)             |     |                                  |
+| `Total_Balance`                 | DECIMAL  | `Total_Balance`                          | DECIMAL           | `Total_Balance`                                | Sum of customer balance across accounts         |     |                                  |
+| `Total_Assets`                 | DECIMAL  | `Total_Assets`                           | DECIMAL           | `Total_Assets`                                 | Estimated total asset value                     |     |                                  |
+| `Estimated_Income`             | DECIMAL  | `Estimated_Income`                       | DECIMAL           | `Estimated_Income`                             | Estimated monthly/annual income                 |     |                                  |
+| `Loan_Exposure`                | DECIMAL  | `Loan_Exposure`                          | DECIMAL           | `Loan_Exposure`                                | Total outstanding loan exposure                 |     |                                  |
+| `Wealth_Tier`                  | VARCHAR  | `Wealth_Tier`                            | VARCHAR           | `Wealth_Tier`                                  | Wealth category (e.g., Mass, Affluent, HNW)     |     |                                  |
+|Technical Fields (for CDC + audit + snapshot logic)|
+|              |   | `scd_change_type`             | STRING    | `scd_change_type`             | `'cdc_insert'` or `'cdc_update'`                  |     | CDC 1.3 logic                     |
+|              |   | `cdc_index`                   | INT       | `cdc_index`                   | Change index (optional for sequencing)            |     |                                  |
+|              |   | `scd_change_timestamp`        | TIMESTAMP | `scd_change_timestamp`        | Ingestion timestamp                               |     |                                  |
+|              |   | `dtf_start_date`              | DATE      | `dtf_start_date`              | Snapshot validity start date                      |     |                                  |
+|              |   | `dtf_end_date`                | DATE      | `dtf_end_date`                | Snapshot end date (NULL = current)                |     |                                  |
+|              |   | `dtf_current_flag`            | BOOLEAN   | `dtf_current_flag`            | TRUE = currently active snapshot                  |     |                                  |
+|              |   |            | DATE      | `ds_partition_date`           | Partition column (history table only)             |     | Only in `_hist` table            |
 
 ---
 
 ### ✅ Business Use Cases
-- Detect sudden drop/increase in wealth across time
-- Identify inconsistencies between declared and observed behavior
-- Train ML models on time-series features like asset volatility
+
+- Detect sudden drop/increase in wealth across time  
+- Identify inconsistencies between declared and observed behavior  
+- Train ML models on time-series features like asset volatility  
 - Reconstruct financial profile at the time of alerts or onboarding

@@ -1,56 +1,73 @@
 ## 📜 Table: Fact_Loan_Repayment
 
-This table is used to track detailed daily loan repayment activity for each loan held by a customer. It captures the total repayment amount made on a given day, how that amount is split into interest and principal, the repayment method used (e.g., auto-debit, manual transfer), and the remaining balance after the repayment. This enables financial institutions to monitor loan performance, assess payment behavior, and support delinquency analysis.
+This table stores all loan repayment events made by customers. It contains both principal and interest components, remaining balance, and repayment method. It is designed to support loan lifecycle tracking, credit exposure analysis, and behavioral anomaly detection.
 
 - **Type**: Fact  
-- **CDC Type**: `1.3`  
-- **Writer Type**: `factUpsert`  
-- **Primary Key**: Composite key – `(Loan_ID, Repayment_Date)`  
+- **CDC Type**: `1.1`  
+- **Writer Type**: `factAppend`  
+- **Primary Key**: Composite – `(Loan_ID, Repayment_Date)`  
 - **Partitioned By**: `ds_partition_date`  
-- **Description**: Captures daily loan repayment activities by customers, including amount, breakdown of principal and interest, and remaining balance. Each record reflects the latest status of a loan repayment on a given day.
+- **Description**: Append-only transactional fact for capturing loan repayment activities, used in cash flow tracking and AML repayment irregularity scenarios.
 
 ---
 
 ### 🔗 Foreign Keys and Relationships:
 
-| Column               | Referenced Table       | Description |
-|----------------------|------------------------|-------------|
-| `Loan_ID`            | `Dim_Loan`             | Loan reference key  |
-| `Customer_ID`        | `Dim_Customer`         | Borrower making the repayment  |
-| `Repayment_Method`   | `Dim_RepaymentMethod`  | Repayment method used  |
-| `Repayment_Date`     | `Dim_Time`             | Date of repayment  |
+| Column         | Referenced Table  | Description                  |
+|----------------|-------------------|------------------------------|
+| `Customer_ID`  | `Dim_Customer`    | The borrower                 |
+| `Loan_ID`      | `Dim_Loan`        | Loan contract (if modeled)   |
 
 ---
 
 ### 📊 Key Columns:
 
-| Column Name            | Description |
-|-------------------------|-------------|
-| `Loan_ID`              | Unique identifier for the loan  |
-| `Customer_ID`          | Customer who made the repayment  |
-| `Repayment_Date`       | Date of repayment transaction  |
-| `Repayment_Amount`     | Total repayment amount on the day  |
-| `Principal_Component`  | Portion of repayment applied to principal  |
-| `Interest_Component`   | Portion of repayment applied to interest  |
-| `Repayment_Method`     | Method used for repayment (e.g., Auto Debit, Cash)  |
-| `Remaining_Balance`    | Outstanding balance after repayment  |
-
+| Raw Column Name       | Raw Type | Standardized Column Name   | Standardized Type | Description                                         | PK  | Note                      |
+|------------------------|----------|-----------------------------|--------------------|-----------------------------------------------------|-----|---------------------------|
+| `Loan_ID`              | VARCHAR  | `Loan_ID`                   | VARCHAR            | Unique identifier for the loan                     | ✅  | Composite primary key     |
+| `Customer_ID`          | VARCHAR  | `Customer_ID`               | VARCHAR            | Borrower linked to repayment                       |     | FK to `Dim_Customer`      |
+| `Repayment_Date`       | DATE     | `Repayment_Date`            | DATE               | Date of the repayment                              | ✅  | Partition source          |
+| `Repayment_Amount`     | DECIMAL  | `Repayment_Amount`          | DECIMAL            | Total repayment amount (principal + interest)      |     | Input to AML logic        |
+| `Principal_Component`  | DECIMAL  | `Principal_Component`       | DECIMAL            | Portion of repayment towards principal             |     |                           |
+| `Interest_Component`   | DECIMAL  | `Interest_Component`        | DECIMAL            | Portion paid as interest                           |     |                           |
+| `Repayment_Method`     | VARCHAR  | `Repayment_Method`          | VARCHAR            | Channel or method used (e.g., Auto, Cash, IBFT)    |     |                           |
+| `Remaining_Balance`    | DECIMAL  | `Remaining_Balance`         | DECIMAL            | Remaining principal after this repayment           |     | Useful for closure logic  |
+| *(N/A)*                | *(N/A)*  | `f_sudden_loan_closure_flag`| BOOLEAN            | TRUE if full repayment made + income mismatch      |     | AML scenario flag         |
+| *(N/A)*               | *(N/A)*  | `f_early_full_repayment_flag` | BOOLEAN           | TRUE if loan is fully repaid ≥30 days before maturity without clear income justification |     | AML scenario flag         |
 ---
 
-### 🧪 Technical Fields (for CDC + audit):
+### 🧪 Technical Fields (Standardize for Insight):
 
 | Column Name           | Type       | Description |
 |------------------------|------------|-------------|
-| `cdc_change_type`      | STRING     | `'cdc_insert'` or `'cdc_update'` depending on change  |
-| `cdc_index`            | LONG/INT   | Optional row index for tracking changes  |
-| `scd_change_timestamp` | TIMESTAMP  | Ingestion or processing timestamp  |
-| `ds_partition_date`    | DATE       | Partition date, typically equal to `Repayment_Date`  |
-| `created_at`           | TIMESTAMP  | Record insertion time  |
-| `updated_at`           | TIMESTAMP  | Time of latest update to the record  |
+| `cdc_change_type`      | STRING     | Always `'cdc_insert'` (CDC 1.1) |
+| `cdc_index`            | LONG       | Ingestion order index           |
+| `scd_change_timestamp` | TIMESTAMP  | Load timestamp into data lake  |
+| `ds_partition_date`    | DATE       | Usually same as `Repayment_Date` |
+
+---
+
+### 🚩 Related AML Scenarios (Standardize → Insight)
+
+| AML Scenario Name                     | Flag at Standardize             | Used in Insight |
+|--------------------------------------|----------------------------------|------------------|
+| Sudden Debt Repayment Beyond Income  | `f_sudden_loan_closure_flag`     | ✅ Yes           |
+| Early Loan Closure with Unexplained Funds | `f_early_full_repayment_flag` | ✅ Yes |
+
+---
+
+### 🧠 Flag Logic Definitions
+
+| Flag Name                     | Type    | Logic                                                                                 |
+|-------------------------------|---------|----------------------------------------------------------------------------------------|
+| `f_sudden_loan_closure_flag`  | BOOLEAN | TRUE if repayment amount ≥ full remaining balance AND monthly income < 10M VND        |
+| `f_early_full_repayment_flag` | BOOLEAN | TRUE if `Remaining_Balance = 0` and `Repayment_Date` is ≥30 days before expected maturity, and customer shows no significant income increase |
+
+> 💡 Requires joining with `Fact_Customer_Income` to determine average monthly income in the same timeframe.
 
 ---
 
 ### ✅ Notes:
-- Uses **CDC Type 1.3** for upsert logic
-- Ensures only the most recent daily record is retained per loan
-- Ideal for monitoring repayment behavior and calculating performance metrics
+- Repayment closure patterns outside of income capability are common laundering behavior
+- Can be extended to track early closure (maturity comparison from `Dim_Loan` or `Fact_Deposit`)
+- Useful for wealth profiling, income deviation, and risk scoring

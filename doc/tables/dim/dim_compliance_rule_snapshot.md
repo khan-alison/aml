@@ -6,48 +6,37 @@ This dimension captures the full state of compliance detection rules in effect o
 - **CDC Type**: `1.3` (with `created_at`, `updated_at` at source)  
 - **Writer Type**: `scd4a`  
 - **Primary Key**: `Rule_ID`  
-- **Partitioned By**: `ds_partition_date` (history table)  
+- **Partitioned By**: `ds_partition_date` (in history table)  
 - **Snapshot Strategy**: Full rule snapshot daily; main shows current configuration
 
 ---
 
-### 🧩 Main Table Schema (Latest Version Only)
+### 📊 Key Columns (Standardize)
 
-| Column Name         | Type     | Description                                  |
-|---------------------|----------|----------------------------------------------|
-| `Rule_ID`           | VARCHAR  | Unique identifier for each compliance rule   |
-| `Rule_Name`         | VARCHAR  | Human-readable name of the rule              |
-| `Rule_SQL`          | TEXT     | Full SQL or expression logic for the rule    |
-| `Severity_Level`    | VARCHAR  | Risk level triggered (e.g., LOW, HIGH)       |
-| `Thresholds`        | VARCHAR  | Rule parameters/thresholds in use            |
-| `Effective_Date`    | DATE     | When the rule version became active          |
-| `Rule_Group`        | VARCHAR  | Logical group (e.g., Transaction, KYC)       |
-| `Is_Enabled`        | BOOLEAN  | Whether the rule is currently active         |
-
-#### 🧪 Technical Fields (Main Table):
-| Column Name            | Type       | Description                                  |
-|------------------------|------------|----------------------------------------------|
-| `scd_change_type`      | STRING     | 'cdc_insert' or 'cdc_update'                 |
-| `cdc_index`            | INT        | Optional order/version counter               |
-| `scd_change_timestamp` | TIMESTAMP  | Time of snapshot ingestion                   |
-| `dtf_start_date`       | DATE       | Start of this rule version                   |
-| `dtf_end_date`         | DATE       | NULL if current version                      |
-| `dtf_current_flag`     | BOOLEAN    | TRUE = active rule version                   |
-
----
-
-### 🗃 History Table Schema (Daily Snapshots)
-
-Contains all fields from the main table, **plus:**
-
-| Column Name          | Type     | Description                                  |
-|----------------------|----------|----------------------------------------------|
-| `ds_partition_date`  | DATE     | Snapshot ingestion date (partition field)    |
+| Raw/Dim_Compliance_Rule_Snapshot | Raw Type | Standardized/std_Compliance_Rule_Snapshot | Standardized Type | Standardized/std_Compliance_Rule_Snapshot_Hist | Description                                      | PK  | Note                             |
+|----------------------------------|----------|-------------------------------------------|-------------------|--------------------------------------------------|--------------------------------------------------|-----|----------------------------------|
+| `Rule_ID`                        | VARCHAR  | `Rule_ID`                                 | VARCHAR           | `Rule_ID`                                        | Unique identifier for each compliance rule       | ✅  |                                  |
+| `Rule_Name`                      | VARCHAR  | `Rule_Name`                               | VARCHAR           | `Rule_Name`                                     | Human-readable name of the rule                  |     |                                  |
+| `Rule_SQL`                       | TEXT     | `Rule_SQL`                                | TEXT              | `Rule_SQL`                                      | Full SQL or expression logic for the rule        |     |                                  |
+| `Severity_Level`                 | VARCHAR  | `Severity_Level`                          | VARCHAR           | `Severity_Level`                                | Risk level triggered (e.g., LOW, HIGH)           |     |                                  |
+| `Thresholds`                     | VARCHAR  | `Thresholds`                              | VARCHAR           | `Thresholds`                                    | Parameters or rule thresholds                    |     |                                  |
+| `Effective_Date`                 | DATE     | `Effective_Date`                          | DATE              | `Effective_Date`                                | When the rule version became active              |     |                                  |
+| `Rule_Group`                     | VARCHAR  | `Rule_Group`                              | VARCHAR           | `Rule_Group`                                    | Logical group (e.g., Transaction, KYC)           |     |                                  |
+| `Is_Enabled`                     | BOOLEAN  | `Is_Enabled`                              | BOOLEAN           | `Is_Enabled`                                    | Whether the rule is currently active             |     |                                  |
+|Technical Fields (for CDC + audit + snapshot logic)|
+|                  |          | `scd_change_type`             | STRING    | `scd_change_type`             | `'cdc_insert'` or `'cdc_update'`                    |     | CDC 1.3 logic                  |
+|                  |          | `cdc_index`                   | INT       | `cdc_index`                   | Change order index (optional)                        |     |                               |
+|                  |          | `scd_change_timestamp`        | TIMESTAMP | `scd_change_timestamp`        | Timestamp of ingestion                               |     |                               |
+|                  |          | `dtf_start_date`              | DATE      | `dtf_start_date`              | Snapshot start date                                  |     |                               |
+|                  |          | `dtf_end_date`                | DATE      | `dtf_end_date`                | Snapshot end date (null = currently active)          |     |                               |
+|                  |          | `dtf_current_flag`            | BOOLEAN   | `dtf_current_flag`            | TRUE if current active version                       |     |                               |
+|                  |          |                               |           | `ds_partition_date`           | Partition date for history table only                |     | `_Hist` table only            |
 
 ---
 
 ### ✅ Business Use Cases
-- Track what rule logic and thresholds were applied on any given day
-- Explain why a customer was flagged based on past rule versions
-- Detect and test rule tuning impact by version
+
+- Track what rule logic and thresholds were applied on any given day  
+- Explain why a customer was flagged based on past rule versions  
+- Detect and test rule tuning impact by version  
 - Provide audit logs for model governance and regulatory validation
