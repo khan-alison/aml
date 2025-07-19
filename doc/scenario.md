@@ -1,222 +1,307 @@
 # 📘 AML Detection Scenarios (Business Logic)
 
-Below is a comprehensive list of **Anti-Money Laundering (AML) detection scenarios**. Each includes a **short description**, **business logic rule**, and **sample examples** that illustrate how it may appear in real transaction behavior.
+Each detection rule includes:
+- **Description** of the suspicious behavior  
+- **Detection Logic** in simple rule terms  
+- **Fields Involved** (table.column references)  
+- **Example Behavior** that would trigger the alert
 
 ---
 
 ## 🔍 1. Round-Number Transactions
-**Description:** Customer repeatedly sends or receives amounts like 50,000,000 VND or 100,000,000 VND. These amounts often signal structuring or layering of illicit funds.  
-**Rule:**  
-- If ≥ 3 transactions in 7 days have amount ending in all zeros → flag for possible layering
 
-**Examples:**
-- Day 1: Transfer of 50,000,000 VND to account A  
-- Day 3: Transfer of 100,000,000 VND to account B  
-- Day 6: Transfer of 200,000,000 VND to account C
+**Description:** Repetitive transfers of round numbers suggest structuring/layering.  
+**Detection Logic:**  
+- If ≥ 3 transactions in 7 days have `Amount` ending in all zeros → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.Amount`  
+- `Fact_Transaction.Booking_Date`
+
+**Example:**  
+- Day 1: 50,000,000 VND  
+- Day 3: 100,000,000 VND  
+- Day 6: 200,000,000 VND
 
 ---
 
 ## 🔍 2. High Velocity in Dormant Account
-**Description:** Inactive account suddenly initiates many transactions in a short period, possibly used as a mule or pass-through.  
-**Rule:**  
-- If account had ≤ 1 txn/month (last 6 months), but ≥ 10 txns in 24h → suspicious activity
 
-**Examples:**
-- A savings account that was used once a month suddenly makes 12 transfers within 6 hours  
-- 8 different recipients receive between 5–15M VND each in one day
+**Description:** Dormant account suddenly makes high-volume transfers.  
+**Detection Logic:**  
+- ≤1 txn/month in past 6 months, but ≥10 txns in 24h → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.From_Account_ID`  
+- `Fact_Transaction.Booking_Date`
+
+**Example:**  
+- 12 transfers in 6 hours from an account used monthly
 
 ---
 
 ## 🔍 3. Cross-Border High-Risk Jurisdictions
-**Description:** Transactions to/from sanctioned or high-risk countries (e.g., Iran, North Korea, Panama)  
-**Rule:**  
-- If ≥ 2 txns to high-risk countries in 30 days → trigger alert
 
-**Examples:**
-- Remittance of 80M VND to Panama and 50M VND to Cayman Islands  
-- Receiving 70M VND from a shell company in Syria
+**Description:** Transactions to/from high-risk or sanctioned countries.  
+**Detection Logic:**  
+- ≥2 transactions to countries with `Risk_Level = 'HIGH'` in 30 days
+
+**Fields Involved:**  
+- `Fact_Transaction.Country_Code`  
+- `Dim_Country.Sanctioned_Flag`  
+- `Dim_Country.Risk_Level`
+
+**Example:**  
+- Transfers to Panama & Cayman Islands in 2 weeks
 
 ---
 
 ## 🔍 4. Synthetic Relationships Between Customers
-**Description:** Two customers with no prior interaction suddenly exchange large funds  
-**Rule:**  
-- No txn history in 90d, then ≥ 3 txns + total > 50M VND in 7d → flag
 
-**Examples:**
-- Customer A and B each transfer 20M VND to the other 3 times in a week  
-- No business, family, or location link found between them
+**Description:** Sudden large transfers between previously unlinked customers.  
+**Detection Logic:**  
+- No txn history in 90 days → ≥3 txns totaling >50M VND in 7 days
 
----
+**Fields Involved:**  
+- `Fact_Transaction.From_Account_ID`  
+- `Fact_Transaction.To_Account_ID`  
+- `Fact_Transaction.Booking_Date`
 
-## 🔍 5. Rapid In-Out Transactions (Layering)
-**Description:** Funds enter and quickly exit account, sometimes within minutes  
-**Rule:**  
-- If 80%+ of incoming amount is transferred out within 1 hour → high suspicion
-
-**Examples:**
-- 150M VND deposited at 10:00 AM, then 145M VND transferred to 3 other accounts by 10:40 AM
+**Example:**  
+- Customer A and B exchange 20M VND multiple times in 1 week
 
 ---
 
-## 🔍 6. Sudden Debt Repayment Beyond Known Income
-**Description:** Customer with low declared income pays off full loan amount unexpectedly  
-**Rule:**  
-- Avg income ≤ 10M VND/mo, normally pays interest only, suddenly repays full debt (>100M VND) → trigger
+## 🔍 5. Rapid In-Out Transactions
 
-**Examples:**
-- Salary ~10M VND/month, typically pays 5M interest  
-- Suddenly repays 350M loan principal in one transaction
+**Description:** Funds deposited and withdrawn quickly (layering).  
+**Detection Logic:**  
+- If ≥80% of incoming funds exit within 1 hour → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.Amount`  
+- `Booking_Date`, transaction timestamps
+
+**Example:**  
+- 150M VND in at 10:00 → 145M VND out by 10:40
+
+---
+
+## 🔍 6. Sudden Debt Repayment Beyond Income
+
+**Description:** Customer repays large loan amount without matching income.  
+**Detection Logic:**  
+- Avg income ≤10M/month and full loan paid suddenly (>100M VND)
+
+**Fields Involved:**  
+- `Fact_Loan_Repayment.Amount`  
+- `Fact_Customer_Income.Inflow_Amount`
+
+**Example:**  
+- Customer with 10M income/month repays 350M in one transaction
 
 ---
 
 ## 🔍 7. Structuring / Smurfing
-**Description:** Large amount split into many small deposits to avoid regulatory thresholds  
-**Rule:**  
-- If total deposits in 7 days > 300M VND, with no single deposit > 100M → possible structuring
 
-**Examples:**
-- 10 deposits of 30M VND across 3 different branches  
-- Daily ATM cash deposits of 50M VND over a week
+**Description:** Large deposits split into smaller transactions.  
+**Detection Logic:**  
+- If total deposits >300M in 7d, each ≤100M → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.Amount`  
+- `Booking_Date`
+
+**Example:**  
+- 10 deposits of 30M across multiple branches in a week
 
 ---
 
 ## 🔍 8. Use of Multiple Accounts for Transfers
-**Description:** Customer uses multiple internal accounts to shuffle or split funds  
-**Rule:**  
-- If customer linked to ≥ 3 accounts with interlinked txns → monitor for funneling
 
-**Examples:**
-- Account A → B → C within same day, all owned by same ID  
-- Same IP or device used for all accounts
+**Description:** Customer uses multiple linked accounts to move funds.  
+**Detection Logic:**  
+- ≥3 linked accounts involved in inter-account txns → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.From_Account_ID`  
+- `Fact_Transaction.To_Account_ID`  
+- `Dim_Customer.Customer_ID`
+
+**Example:**  
+- A → B → C transfers all by same customer in one day
 
 ---
 
 ## 🔍 9. Transactions with Unrelated Individuals
-**Description:** Customer receives multiple payments from unrelated or unknown persons  
-**Rule:**  
-- If ≥ 5 txns from non-family senders in 7 days → flag for review
 
-**Examples:**
-- Receives 5 transfers from 5 different individuals not in known relationship/KYC  
-- No invoice, contract, or business reason
+**Description:** Funds received from unknown, non-related parties.  
+**Detection Logic:**  
+- ≥5 inbound txns from unknown senders in 7d → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.To_Account_ID`  
+- `From_Account_ID`, `Dim_Customer.Relationship_Type`
+
+**Example:**  
+- 5 transfers from unrelated customers in 5 days
 
 ---
 
 ## 🔍 10. Early Loan Closure with Unexplained Funds
-**Description:** Loan is paid off much earlier than expected, without declared income or asset sale  
-**Rule:**  
-- If full repayment + closure occurs 30+ days before maturity and no salary spike → alert
 
-**Examples:**
-- 2-year loan repaid fully in month 9 with no salary increase, no asset liquidation on record
+**Description:** Loan closed earlier than scheduled without visible funding source.  
+**Detection Logic:**  
+- If loan is paid ≥30d before maturity and no income spike → flag
+
+**Fields Involved:**  
+- `Fact_Loan_Repayment.Closure_Date`  
+- `Fact_Customer_Income.Inflow_Amount`  
+- `Loan.Term_End_Date`
+
+**Example:**  
+- 2-year loan repaid in month 9 with no salary increase
 
 ---
 
 ## 🔍 11. Bidirectional Transfers Between Customers
-**Description:** Two customers send money back and forth, possibly layering or laundering  
-**Rule:**  
-- If ≥ 2 txns in both directions within 3 days + total > threshold → flag
 
-**Examples:**
-- A sends 60M VND to B on Monday  
-- B sends 58M VND back to A on Wednesday
+**Description:** Customers send and return similar amounts in a short span.  
+**Detection Logic:**  
+- ≥2 transfers in both directions within 3 days, total > threshold
+
+**Fields Involved:**  
+- `Fact_Transaction.From_Account_ID`, `To_Account_ID`, `Booking_Date`
+
+**Example:**  
+- A sends 60M → B, then B sends 58M → A two days later
 
 ---
 
 ## 🔍 12. High Transaction-to-Income Ratio
-**Description:** Spending or transfers exceed income by wide margin  
-**Rule:**  
-- If monthly outflow > 5× declared income → unexplained wealth → flag
 
-**Examples:**
-- Income: 12M VND/month, total transfers: 90M VND in same month  
-- No matching inflows from salary or asset sale
+**Description:** Customer spends significantly more than declared income.  
+**Detection Logic:**  
+- Outflows in a month > 5× monthly declared income → flag
+
+**Fields Involved:**  
+- `Fact_Transaction.Amount`  
+- `Fact_Customer_Income.Inflow_Amount`
+
+**Example:**  
+- Income = 12M, outflow = 90M VND in one month
 
 ---
 
-## 🔍 13. Use of Collateral Mismatched with Customer Profile
-**Description:** Low-income individual pledges high-value asset for a loan  
-**Rule:**  
-- If customer income ≤ 10M/month but pledges house worth >5B VND → escalate
+## 🔍 13. Collateral Mismatch with Customer Profile
 
-**Examples:**
-- Taxi driver pledges luxury condo worth 6B VND  
-- No prior asset declaration or title history
+**Description:** Low-income customers pledge high-value collateral.  
+**Detection Logic:**  
+- If income ≤10M and collateral pledged >5B → flag
+
+**Fields Involved:**  
+- `Fact_Collateral_Assignment.Collateral_Value`  
+- `Fact_Customer_Income.Inflow_Amount`
+
+**Example:**  
+- Taxi driver pledges luxury condo valued at 6B VND
 
 ---
 
 ## 🔍 14. Multiple Customers Linked to Same ID or Address
-**Description:** Possible fraud ring or synthetic identities  
-**Rule:**  
-- ≥ 3 customers with same ID/Address → synthetic ID or fraud ring risk
 
-**Examples:**
-- 5 customer accounts linked to same National ID or apartment number  
-- All opened within 1 week timeframe
+**Description:** Shared ID or address among multiple customers.  
+**Detection Logic:**  
+- ≥3 customers share same ID or address → synthetic identity risk
+
+**Fields Involved:**  
+- `Dim_Customer.ID_Number`, `Dim_Customer.Address`
+
+**Example:**  
+- 5 customers share same passport number or apartment
 
 ---
 
 ## 🔍 15. Frequent Foreign Currency Exchange
-**Description:** Excessive FX activity without stated purpose (travel, business)  
-**Rule:**  
-- If ≥ 10 FX conversions in 7 days, total > 100M VND → possible laundering
 
-**Examples:**
-- 12 USD/VND exchanges totaling 120M VND in 5 days  
-- No overseas travel history or declared FX usage
+**Description:** Excessive FX usage without known business or travel needs.  
+**Detection Logic:**  
+- ≥10 FX conversions in 7 days totaling >100M VND → flag
+
+**Fields Involved:**  
+- `Fact_Forex_Transaction.Amount`, `FX_Type`, `Booking_Date`
+
+**Example:**  
+- 12 USD exchanges worth 120M VND in 5 days
 
 ---
 
 ## 🔍 16. KYC Profile Drift Over Time
-**Description:** KYC information changes repeatedly or drastically in a short period.  
-**Rule:**  
-- If ≥ 3 changes to KYC profile (e.g., address, income, ID) in 30 days → flag
 
-**Examples:**
-- Changed address, ID number, and income level within 2 weeks  
-- Inconsistent nationality and phone/email across snapshots
+**Description:** KYC info changes multiple times in a short span.  
+**Detection Logic:**  
+- ≥3 field changes (address, income, ID) in 30 days → flag
+
+**Fields Involved:**  
+- `Dim_KYC_Profile_Snapshot.*`, `scd_change_timestamp`
+
+**Example:**  
+- New address, income level, and ID issued within 2 weeks
 
 ---
 
 ## 🔍 17. Frequent Employer Changes
-**Description:** Customer switches employment or job titles too often, indicating instability.  
-**Rule:**  
-- If `Dim_Employment` shows ≥ 3 distinct employers in 90 days → review needed
 
-**Examples:**
-- Works at 3 companies in 2 months  
-- Inconsistent industry or income source
+**Description:** Rapid changes in employment data.  
+**Detection Logic:**  
+- ≥3 distinct employers in `Dim_Employment` in 90 days → flag
+
+**Fields Involved:**  
+- `Dim_Employment.Customer_ID`, `Employer_ID`, `Verification_Date`
+
+**Example:**  
+- Changed jobs 3 times in 2 months
 
 ---
 
 ## 🔍 18. Wealth Tier Fluctuation Without Explanation
-**Description:** Customer moves between wealth tiers rapidly without supporting evidence.  
-**Rule:**  
-- If `Wealth_Tier` changes 2+ times in 60 days → validate with transactions/inflows
 
-**Examples:**
-- Affluent → HNW → Mass in 6 weeks  
-- No matching salary increase or asset event
+**Description:** Moves up/down tiers rapidly with no justification.  
+**Detection Logic:**  
+- `Wealth_Tier` changes ≥2 times in 60 days → flag
+
+**Fields Involved:**  
+- `Dim_Customer_Wealth_Profile.Wealth_Tier`, `scd_change_timestamp`
+
+**Example:**  
+- HNW → Affluent → Mass within 45 days
 
 ---
 
 ## 🔍 19. Inconsistent Balance vs. Transactions
-**Description:** Balance changes don't align with transaction volume.  
-**Rule:**  
-- If ∆ Balance ≠ Net Transaction Amount ± 10% → anomaly
 
-**Examples:**
-- Balance jumps by 1B VND with no recorded inflow  
-- Declared income does not explain balance spike
+**Description:** Balance delta does not match expected net transactions.  
+**Detection Logic:**  
+- ∆ Balance ≠ Net inflow/outflow ±10% → anomaly
+
+**Fields Involved:**  
+- `Dim_Account_Balance_Snapshot.*`  
+- `Fact_Transaction.*`
+
+**Example:**  
+- Balance rose by 1B but no inbound txns recorded
 
 ---
 
 ## 🔍 20. Rule Change Immediately Before Alert
-**Description:** Compliance rule was modified shortly before it triggered an alert.  
-**Rule:**  
-- If rule severity reduced or threshold raised within 48h before alert → flag override risk
 
-**Examples:**
-- Rule threshold raised from 500M → 800M the day before a transaction of 750M was flagged  
-- Alert fired from relaxed rule
+**Description:** Rule logic was modified shortly before firing an alert.  
+**Detection Logic:**  
+- If `Dim_Compliance_Rule_Snapshot` changed within 48h before alert → escalate
+
+**Fields Involved:**  
+- `Dim_Compliance_Rule_Snapshot.scd_change_timestamp`  
+- `Alert_Fact.Alert_Timestamp`
+
+**Example:**  
+- Threshold raised from 500M to 800M the day before a 750M txn alert

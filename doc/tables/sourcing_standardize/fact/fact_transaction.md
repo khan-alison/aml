@@ -44,6 +44,7 @@ This table stores all transactional events such as transfers, deposits, and with
 |              |  | `f_high_risk_country_flag`    | BOOLEAN           | Country is high-risk or sanctioned                       |     | AML support flag          |
 |              |  | `f_rapid_inout_flag`          | BOOLEAN           | ≥80% incoming sent out within 1h                         |     | AML support flag          |
 |              |  | `f_circular_fund_flow_flag`   | BOOLEAN           | TRUE if funds flow in a closed loop within 3 accounts in <24h |     | AML scenario flag         |
+| *(Derived)*          | *(Derived)* | `derived_transaction_type`  | STRING            | Transaction type derived from sender/receiver, channel, and service logic |     | Used in insight detection logic |
 |Technical Fields (for CDC + audit)|
 |              |   | `cdc_change_type`            | STRING    | Always `'cdc_insert'` (CDC 1.1)                         |     |                           |
 |              |   | `cdc_index`                  | LONG      | Ingestion checkpoint index                             |     |                           |
@@ -88,12 +89,17 @@ This table stores all transactional events such as transfers, deposits, and with
 | `f_spending_exceeds_income_flag`| BOOLEAN | TRUE if total spending in calendar month > 150% of monthly income    |
 | `f_structuring_pattern_flag`    | BOOLEAN | TRUE if ≥ 3 transactions < reporting threshold (e.g., < $10,000) from same customer within 1 day |
 | `f_unregistered_channel_flag` | BOOLEAN | TRUE if `Channel_ID` not in list of registered or commonly used channels |
+| `derived_transaction_type` | STRING | - `'INTERNAL_TRANSFER'` if From/To accounts belong to same bank  
+|                          |        | - `'EXTERNAL_TRANSFER'` if target bank is different  
+|                          |        | - `'CASH_DEPOSIT'`, `'CASH_WITHDRAWAL'` based on Channel_ID or Service_Type  
+|                          |        | - `'FX_CONVERSION'`, `'LOAN_REPAYMENT'` inferred from Transaction_Type_ID or Service_Code |
 
 ---
 
 ### ✅ Notes
-
 - Circular fund flow often indicates layering in money laundering  
 - Detection may require window-based multi-hop join logic  
 - Flag is computed during standardize phase using window graph traversal  
 - Requires high-precision timestamp and directionally joined accounts
+- `derived_transaction_type` is calculated during Standardize phase using account, channel, and transaction metadata.
+- This field is reused in insight tables to simplify detection logic and scenario classification.

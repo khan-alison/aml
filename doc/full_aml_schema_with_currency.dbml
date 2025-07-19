@@ -1,4 +1,5 @@
-// Full AML Data Model (33 Tables) - dbdiagram.io compatible DBML
+
+// Full AML Data Model (39 Tables) - dbdiagram.io compatible DBML
 // Paste into https://dbdiagram.io/ to visualize the complete model
 
 // ==================== DIMENSION TABLES ====================
@@ -209,6 +210,15 @@ Table Dim_Compliance_Rule_Snapshot {
   Is_Enabled boolean
 }
 
+Table Dim_Currency {
+  Currency_Code varchar [pk]
+  Currency_Name varchar
+  ISO_Code varchar
+  FX_Rate decimal
+  Effective_Date date
+  Is_Active boolean
+}
+
 Table Hist_Dim_Employment {
   Employer_ID varchar
   Customer_ID varchar
@@ -382,6 +392,11 @@ Ref: Fact_Transaction.To_Account_ID > Dim_Account.Account_ID
 Ref: Fact_Transaction.Transaction_Type_ID > Dim_Transaction_Type.Transaction_Type_ID
 Ref: Fact_Transaction.Channel_ID > Dim_Channel.Channel_ID
 Ref: Fact_Transaction.Country_Code > Dim_Country.Country_Code
+Ref: Fact_Transaction.Currency > Dim_Currency.Currency_Code
+Ref: Dim_Account.Currency > Dim_Currency.Currency_Code
+Ref: Fact_Customer_Balance.Currency > Dim_Currency.Currency_Code
+Ref: Fact_Collateral_Assignment.Currency > Dim_Currency.Currency_Code
+Ref: Fact_Asset_Valuation.Currency > Dim_Currency.Currency_Code
 Ref: Fact_Loan_Repayment.Customer_ID > Dim_Customer.Customer_ID
 Ref: Fact_Customer_Balance.Customer_ID > Dim_Customer.Customer_ID
 Ref: Fact_Customer_Balance.Account_ID > Dim_Account.Account_ID
@@ -415,10 +430,10 @@ Ref: Fact_Risk_Score.Score_Band > Dim_Risk_Level.Level_Name
 Ref: Dim_PEP_List.National_ID > Dim_Customer.ID_Number
 Ref: Fact_Party_Linkage.Link_Type > Dim_Party_Role.Role_Name
 Ref: Dim_Collateral_Type.Collateral_Type_ID > Dim_Asset.Asset_Type
-Ref: Dim_Customer_Wealth_Profile.Customer_ID > Dim_Customer.Customer_ID
-Ref: Dim_Customer_Wealth_Profile.Date_ID > Dim_Time.Date_ID
 Ref: Dim_Account_Balance_Snapshot.Account_ID > Dim_Account.Account_ID
 Ref: Dim_Account_Balance_Snapshot.Customer_ID > Dim_Customer.Customer_ID
 Ref: Dim_KYC_Profile_Snapshot.Customer_ID > Dim_Customer.Customer_ID
 Ref: Hist_Dim_Employment.Customer_ID > Dim_Customer.Customer_ID
 Ref: Fact_Alert.Triggered_By_Rule > Dim_Compliance_Rule_Snapshot.Rule_ID
+Ref: Dim_Customer_Wealth_Profile.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Customer_Wealth_Profile.Date_ID > Dim_Time.Date_ID
