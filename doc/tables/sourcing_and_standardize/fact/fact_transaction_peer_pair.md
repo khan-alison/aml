@@ -11,63 +11,47 @@ This table aggregates transactional relationships between two customers across a
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column             | Referenced Table  | Description                            |
-|--------------------|-------------------|----------------------------------------|
-| `From_Customer_ID` | `Dim_Customer`    | Initiating party                       |
-| `To_Customer_ID`   | `Dim_Customer`    | Receiving party                        |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name    | Raw Type | Standardized Column Name     | Standardized Type | Description                                                     | PK  | Note                      |
-|--------------------|----------|-------------------------------|--------------------|-----------------------------------------------------------------|-----|---------------------------|
-| `From_Customer_ID` | VARCHAR  | `From_Customer_ID`            | VARCHAR            | Customer who initiated the transactions                        | ✅  | Composite key             |
-| `To_Customer_ID`   | VARCHAR  | `To_Customer_ID`              | VARCHAR            | Receiving counterparty                                          | ✅  | Composite key             |
-| `Window_Days`      | INT      | `Window_Days`                 | INT                | Number of days for aggregation window (e.g., 7)                | ✅  | Composite key             |
-| `Txn_Count`        | INT      | `Txn_Count`                   | INT                | Number of transactions from A → B                              |     |                           |
-| `Total_Amount`     | DECIMAL  | `Total_Amount`                | DECIMAL            | Total amount transferred in the window                         |     | AML detection input       |
-| `First_Txn_Date`   | DATE     | `First_Txn_Date`              | DATE               | First transaction date in the window                           |     | Time anchoring            |
-| `Bidirectional_Flag`| BOOLEAN | `Bidirectional_Flag`          | BOOLEAN            | TRUE if both A→B and B→A transactions exist                    |     | Derived flag              |
-| *(N/A)*            | *(N/A)*  | `f_synthetic_relation_flag`   | BOOLEAN            | TRUE if sudden, heavy exchange with no prior history           |     | AML scenario flag         |
-| *(N/A)*               | *(N/A)*  | `f_bidirectional_transfer_flag` | BOOLEAN           | TRUE if ≥2 transactions in both directions within 3 days and total amount exceeds threshold |     | AML scenario flag         |
+| Raw/TableName                    | Raw Type | Standardized/TableName            | Standardized Type | Description                                                                 | PK  | Note                                       |
+|----------------------------------|----------|-----------------------------------|--------------------|-----------------------------------------------------------------------------|-----|--------------------------------------------|
+| `From_Customer_ID`               | VARCHAR  | `From_Customer_ID`                | VARCHAR            | Customer who initiated the transactions                                     | ✅  | FK to `Dim_Customer`                       |
+| `To_Customer_ID`                 | VARCHAR  | `To_Customer_ID`                  | VARCHAR            | Receiving customer                                                          | ✅  | FK to `Dim_Customer`                       |
+| `Window_Days`                    | INT      | `Window_Days`                     | INT                | Time window in days (e.g., 7, 30)                                           | ✅  | Composite PK element                       |
+| `Txn_Count`                      | INT      | `Txn_Count`                       | INT                | Number of transactions from A to B                                          |     | Derived via aggregation                    |
+| `Total_Amount`                   | DECIMAL  | `Total_Amount`                    | DECIMAL            | Total amount transferred in window                                          |     | Used in flag logic                         |
+| `First_Txn_Date`                 | DATE     | `First_Txn_Date`                  | DATE               | First transaction date in the window                                        |     | Time anchor                                |
+| `Bidirectional_Flag`            | BOOLEAN  | `Bidirectional_Flag`              | BOOLEAN            | TRUE if both A→B and B→A transactions exist                                 |     | Behavioral indicator                       |
+| *(Derived)*                      | *(N/A)*  | `f_synthetic_relation_flag`       | BOOLEAN            | TRUE if heavy transactions exist without prior history                      |     | AML scenario flag                          |
+| *(Derived)*                      | *(N/A)*  | `f_bidirectional_transfer_flag`   | BOOLEAN            | TRUE if ≥2 txns in both directions within 3d and total exceeds threshold    |     | AML scenario flag                          |
+|Technical Fields (for CDC + audit)|
+| *(Technical)*                    | STRING   | `cdc_change_type`                 | STRING             | Always `'cdc_insert'` for CDC 1.1                                           |     | Append-only                                |
+| *(Technical)*                    | LONG     | `cdc_index`                       | LONG               | Monotonically increasing ingestion index                                    |     | Checkpointing                             |
+| *(Technical)*                    | TIMESTAMP| `scd_change_timestamp`            | TIMESTAMP          | Timestamp of record arrival                                                 |     |                                            |
+| *(Technical)*                    | DATE     | `ds_partition_date`               | DATE               | Partition column (usually last Txn date)                                    | ✅  | Part of composite PK                       |
 
 ---
 
-### 🧪 Technical Fields (Standardize for Insight):
+### 🚩 Related AML Scenarios
 
-| Column Name           | Type       | Description |
-|------------------------|------------|-------------|
-| `cdc_change_type`      | STRING     | Always `'cdc_insert'` (CDC 1.1) |
-| `cdc_index`            | LONG       | Monotonically increasing ingestion index |
-| `scd_change_timestamp` | TIMESTAMP  | Time record landed in the lake |
-| `ds_partition_date`    | DATE       | Date partition for the aggregate window |
-
----
-
-### 🚩 Related AML Scenarios (Standardize → Insight)
-
-| AML Scenario Name                   | Flag at Standardize          | Used in Insight |
-|------------------------------------|-------------------------------|------------------|
-| Synthetic Relationships Between Customers | `f_synthetic_relation_flag` | ✅ Yes           |
-| Bidirectional Transfers Between Customers | `f_bidirectional_transfer_flag` | ✅ Yes |
+| AML Scenario Name                        | Flag at Standardize             | Used in Insight |
+|-----------------------------------------|----------------------------------|------------------|
+| Synthetic Relationship Detection         | `f_synthetic_relation_flag`      | ✅ Yes           |
+| Bidirectional Transaction Flows          | `f_bidirectional_transfer_flag`  | ✅ Yes           |
 
 ---
 
 ### 🧠 Flag Logic Definitions
 
-| Flag Name                  | Type    | Logic                                                                 |
-|----------------------------|---------|-----------------------------------------------------------------------|
-| `f_synthetic_relation_flag`| BOOLEAN | TRUE if no historical relationship in past 90d, AND ≥ 3 txns AND total > 50M VND within 7d |
-| `f_bidirectional_transfer_flag` | BOOLEAN | TRUE if Customer A and B each send ≥2 transactions to each other within 3 days, and total amount ≥ configured threshold |
-
-> 💡 May require enriching with historical peer-pair tracking table to detect "no prior history".
+| Flag Name                         | Type    | Logic                                                                                  |
+|----------------------------------|---------|----------------------------------------------------------------------------------------|
+| `f_synthetic_relation_flag`      | BOOLEAN | TRUE if no historical peer-pair in past 90d, AND ≥3 txns, AND total > 50M VND         |
+| `f_bidirectional_transfer_flag`  | BOOLEAN | TRUE if both A and B sent ≥2 txns to each other in ≤3 days AND total ≥ threshold      |
 
 ---
 
-### ✅ Notes:
-- Designed for window-based customer-pair profiling
-- Can be reused across multiple scenarios (bidirectional layering, circular flow)
-- Derived from `Fact_Transaction` via groupBy (customer_id_1, customer_id_2, window)
+### ✅ Notes
+
+- Built from rolling aggregation on `Fact_Transaction`  
+- Helps identify collusion networks, laundering rings, and fabricated peer links  
+- Use with `f_synthetic_relation_flag` to detect sudden new high-risk connections  

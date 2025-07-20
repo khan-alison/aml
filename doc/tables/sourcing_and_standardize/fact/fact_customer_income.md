@@ -11,39 +11,24 @@ This table estimates or records the monthly income of customers, based on transa
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Customer_ID`  | `Dim_Customer`         | Customer reference  |
-| `Month`        | `Dim_Time`             | Monthly snapshot date  |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                     | PK  | Note                     |
-|---------------------|----------|---------------------------|--------------------|-------------------------------------------------|-----|--------------------------|
-| `Customer_ID`       | VARCHAR  | `Customer_ID`             | VARCHAR            | Customer identifier                             | ✅  | FK to `Dim_Customer`     |
-| `Month`             | DATE     | `Month`                   | DATE               | Snapshot month of the inflow                    | ✅  | FK to `Dim_Time`         |
-| `Inflow_Amount`     | DECIMAL  | `Inflow_Amount`           | DECIMAL            | Monthly income amount estimated/observed        |     |                          |
-| `Inflow_Source`     | VARCHAR  | `Inflow_Source`           | VARCHAR            | Source of inflow (e.g., salary, rental, transfer)|     |                          |
-| `Income_Type`       | VARCHAR  | `Income_Type`             | VARCHAR            | Type of income (e.g., regular, irregular)       |     |                          |
-| `Estimation_Method` | VARCHAR  | `Estimation_Method`       | VARCHAR            | How the income was estimated                    |     |                          |
-| *(N/A)*             | *(N/A)*  | `f_high_txn_to_income_ratio_flag` | BOOLEAN           | TRUE if total transaction outflows exceed 5× monthly declared income |     | AML scenario flag         |
-
----
-
-### 🧪 Technical Fields (for CDC + audit):
-
-| Raw Column Name        | Raw Type | Standardized Column Name | Standardized Type | Description                                 | PK  | Note |
-|------------------------|----------|---------------------------|--------------------|---------------------------------------------|-----|------|
-| `cdc_change_type`      | STRING   | `cdc_change_type`         | STRING             | `'cdc_insert'` or `'cdc_update'`            |     | CDC 1.3 logic            |
-| `cdc_index`            | INT      | `cdc_index`               | INT                | Sequence/order index                        |     | Optional                 |
-| `scd_change_timestamp` | TIMESTAMP| `scd_change_timestamp`    | TIMESTAMP          | Ingestion timestamp                         |     |                           |
-| `ds_partition_date`    | DATE     | `ds_partition_date`       | DATE               | Partition date (aligned with `Month`)       |     |                           |
-| `created_at`           | TIMESTAMP| `created_at`              | TIMESTAMP          | Time first seen in data                     |     |                           |
-| `updated_at`           | TIMESTAMP| `updated_at`              | TIMESTAMP          | Time last updated                           |     |                           |
+| Raw/Fact_Customer_Income | Raw Type | Standardized/std_Customer_Income | Standardized Type | Standardized/std_Customer_Income_Hist | Description                                       | PK  | Note                     |
+|--------------------------|----------|----------------------------------|-------------------|----------------------------------------|---------------------------------------------------|-----|--------------------------|
+| `Customer_ID`            | VARCHAR  | `Customer_ID`                    | VARCHAR           | `Customer_ID`                          | Customer identifier                               | ✅  | FK to `Dim_Customer`     |
+| `Month`                  | DATE     | `Month`                          | DATE              | `Month`                                | Snapshot month of the inflow                      | ✅  | FK to `Dim_Time`         |
+| `Inflow_Amount`          | DECIMAL  | `Inflow_Amount`                  | DECIMAL           | `Inflow_Amount`                        | Estimated/observed monthly income                 |     |                          |
+| `Inflow_Source`          | VARCHAR  | `Inflow_Source`                  | VARCHAR           | `Inflow_Source`                        | Source of inflow (salary, rental, etc.)           |     |                          |
+| `Income_Type`            | VARCHAR  | `Income_Type`                    | VARCHAR           | `Income_Type`                          | Income classification (e.g., regular)             |     |                          |
+| `Estimation_Method`      | VARCHAR  | `Estimation_Method`              | VARCHAR           | `Estimation_Method`                    | Logic or model used for estimation                |     |                          |
+| *(derived)*              | *(N/A)*  | `f_high_txn_to_income_ratio_flag`| BOOLEAN           | `f_high_txn_to_income_ratio_flag`      | TRUE if total monthly outflows > 5× income        |     | AML scenario flag         |
+|**Technical Fields (for CDC + audit)**|         |                                  |                   |                                        |                                                   |     |                          |
+|                          |          | `cdc_change_type`                | STRING            | `cdc_change_type`                      | `'cdc_insert'` or `'cdc_update'`                 |     | CDC 1.3 logic            |
+|                          |          | `cdc_index`                      | INT               | `cdc_index`                            | Optional CDC ordering                            |     |                          |
+|                          |          | `scd_change_timestamp`           | TIMESTAMP         | `scd_change_timestamp`                 | Ingestion timestamp                              |     |                          |
+|                          |          | `created_at`                     | TIMESTAMP         | `created_at`                           | Time first seen in system                        |     | Required for CDC 1.3     |
+|                          |          | `updated_at`                     | TIMESTAMP         | `updated_at`                           | Last update timestamp                            |     | Required for CDC 1.3     |
+|                          |          |                                  |                   | `ds_partition_date`                    | Partition column (aligned with `Month`)          | ✅  |                          |
 
 ---
 
@@ -63,8 +48,8 @@ This table estimates or records the monthly income of customers, based on transa
 
 ---
 
-### ✅ Notes:
-- Uses **CDC 1.3** logic for upsert (merge by `Customer_ID` + `Month`)
-- Enables monthly income trend and customer affordability modeling
-- Can be sourced from both declared values and transactional inference
-- Flag supports AML profiling where declared income is disproportionately lower than spending
+### ✅ Notes
+
+- Enables monthly affordability and income vs. behavior consistency checks  
+- Sourced from declared values and/or transaction-derived inference  
+- Can power dashboards showing salary trend, volatility, or underreporting

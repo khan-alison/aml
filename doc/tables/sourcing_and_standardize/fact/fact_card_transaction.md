@@ -11,52 +11,35 @@ This table captures all credit/debit card transaction activity made by customers
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Card_ID`      | `Dim_Card`             | Card used in the transaction  |
-| `Customer_ID`  | `Dim_Customer`         | Cardholder/customer  |
-| `Channel_ID`   | `Dim_Channel`          | Channel used for transaction (POS, ATM, Online)  |
-| `Txn_Date`     | `Dim_Time`             | Date of transaction  |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name | Raw Type | Standardized Column Name | Standardized Type | Description                            | PK  | Note                  |
-|------------------|----------|---------------------------|--------------------|----------------------------------------|-----|------------------------|
-| `Card_Txn_ID`    | VARCHAR  | `Card_Txn_ID`             | VARCHAR            | Unique ID of the card transaction      | ✅  | Primary key            |
-| `Card_ID`        | VARCHAR  | `Card_ID`                 | VARCHAR            | Card used in the transaction           |     | FK to `Dim_Card`       |
-| `Customer_ID`    | VARCHAR  | `Customer_ID`             | VARCHAR            | Customer who performed the transaction |     | FK to `Dim_Customer`   |
-| `Txn_Date`       | DATE     | `Txn_Date`                | DATE               | Date of transaction                    |     | Partition source       |
-| `Amount`         | DECIMAL  | `Amount`                  | DECIMAL            | Transaction amount                     |     | Used in AML logic      |
-| `Merchant`       | VARCHAR  | `Merchant`                | VARCHAR            | Merchant name or location              |     |                        |
-| `Country`        | VARCHAR  | `Country`                 | VARCHAR            | Country where transaction occurred     |     | Risk country check     |
-| `Channel_ID`     | VARCHAR  | `Channel_ID`              | VARCHAR            | Channel type used (ATM, POS, Internet) |     | FK to `Dim_Channel`    |
-| `Txn_Type`       | VARCHAR  | `Txn_Type`                | VARCHAR            | PURCHASE, WITHDRAWAL, etc.             |     | Used in segmentation   |
-|           |   | `f_round_txn_flag`        | BOOLEAN            | TRUE if Amount is a round number       |     | AML flag               |
-|           |   | `f_frequent_fx_flag`      | BOOLEAN            | TRUE if many foreign txns in short time |     | AML flag               |
-
----
-
-### 🧪 Technical Fields (Standardize for Insight):
-
-| Column Name           | Type       | Description |
-|------------------------|------------|-------------|
-| `cdc_change_type`      | STRING     | Always `'cdc_insert'` (CDC 1.1) |
-| `cdc_index`            | LONG       | Monotonically increasing ID for checkpointing |
-| `scd_change_timestamp` | TIMESTAMP  | Time record was written to fact table |
-| `ds_partition_date`    | DATE       | Derived from `Txn_Date` |
+| Raw/Fact_Card_Transaction | Raw Type | Standardized/std_Card_Transaction | Standardized Type | Standardized/std_Card_Transaction_Hist | Description                                      | PK  | Note                     |
+|----------------------------|----------|-----------------------------------|-------------------|----------------------------------------|--------------------------------------------------|-----|--------------------------|
+| `Card_Txn_ID`             | VARCHAR  | `Card_Txn_ID`                     | VARCHAR           | `Card_Txn_ID`                          | Unique ID of the card transaction                | ✅  | Primary key              |
+| `Card_ID`                 | VARCHAR  | `Card_ID`                         | VARCHAR           | `Card_ID`                              | Card used in the transaction                     |     | FK to `Dim_Card`         |
+| `Customer_ID`             | VARCHAR  | `Customer_ID`                     | VARCHAR           | `Customer_ID`                          | Cardholder/customer                              |     | FK to `Dim_Customer`     |
+| `Txn_Date`                | DATE     | `Txn_Date`                        | DATE              | `Txn_Date`                             | Date of transaction                              |     | FK to `Dim_Time`         |
+| `Amount`                  | DECIMAL  | `Amount`                          | DECIMAL           | `Amount`                               | Transaction amount                               |     | AML scenario input       |
+| `Merchant`                | VARCHAR  | `Merchant`                        | VARCHAR           | `Merchant`                             | Merchant name or location                        |     |                          |
+| `Country`                 | VARCHAR  | `Country`                         | VARCHAR           | `Country`                              | Country of transaction                           |     | Risk geography screening |
+| `Channel_ID`              | VARCHAR  | `Channel_ID`                      | VARCHAR           | `Channel_ID`                           | POS, ATM, Online, etc.                           |     | FK to `Dim_Channel`      |
+| `Txn_Type`                | VARCHAR  | `Txn_Type`                        | VARCHAR           | `Txn_Type`                             | PURCHASE, WITHDRAWAL, etc.                       |     |                          |
+| *(Derived)*               | *(N/A)*  | `f_round_txn_flag`                | BOOLEAN           | `f_round_txn_flag`                     | TRUE if Amount ends in ≥ 4 zeros                 |     | AML flag                 |
+| *(Derived)*               | *(N/A)*  | `f_frequent_fx_flag`              | BOOLEAN           | `f_frequent_fx_flag`                   | TRUE if frequent foreign txns in 7-day window    |     | AML flag (window-based)  |
+|**Technical Fields (for CDC 1.1)**   |          |                                   |                   |                                        |                                                  |     |                          |
+|                            |          | `cdc_change_type`                | STRING            | `cdc_change_type`                      | Always `'cdc_insert'` (append-only)              |     | CDC 1.1 logic             |
+|                            |          | `cdc_index`                      | LONG              | `cdc_index`                            | Monotonically increasing for checkpointing        |     | Required                  |
+|                            |          | `scd_change_timestamp`          | TIMESTAMP         | `scd_change_timestamp`                 | Time written to the fact table                   |     | Ingestion time            |
+|                            |          |                                  |                   | `ds_partition_date`                    | Derived from `Txn_Date`                          |     | Partition field           |
 
 ---
 
 ### 🚩 Related AML Scenarios (Standardize → Insight)
 
-| AML Scenario Name                   | Flag at Standardize      | Used in Insight |
-|------------------------------------|---------------------------|------------------|
-| Round-Number Transactions          | `f_round_txn_flag`        | ✅ Yes           |
-| Frequent Foreign Currency Exchange | `f_frequent_fx_flag`      | ✅ Yes           |
+| AML Scenario                        | Flag Name              | Derived in Standardize | Used in Insight |
+|-------------------------------------|------------------------|-------------------------|------------------|
+| Round-number card transactions      | `f_round_txn_flag`     | ✅                      | ✅               |
+| Frequent foreign card usage         | `f_frequent_fx_flag`   | ✅                      | ✅               |
 
 ---
 
@@ -64,14 +47,16 @@ This table captures all credit/debit card transaction activity made by customers
 
 | Flag Name             | Type    | Logic Description                                                                 |
 |-----------------------|---------|-----------------------------------------------------------------------------------|
-| `f_round_txn_flag`     | BOOLEAN | TRUE if `Amount % 1_000_000 == 0` or ends in ≥ 4 zeros                           |
-| `f_frequent_fx_flag`   | BOOLEAN | TRUE if ≥10 foreign transactions within 7 days for same `Customer_ID`            |
+| `f_round_txn_flag`     | BOOLEAN | TRUE if `Amount % 1_000_000 == 0` or ends in ≥ 4 trailing zeros                   |
+| `f_frequent_fx_flag`   | BOOLEAN | TRUE if ≥10 card transactions in foreign currency within any 7-day rolling window |
 
-> 💡 `f_frequent_fx_flag` may require window-based calculation across Std_Card_Transaction or merged with Std_Transaction.
+> 💡 `f_frequent_fx_flag` requires Spark window function logic grouped by `Customer_ID`, filtered by currency ≠ local.
 
 ---
 
-### ✅ Notes:
-- Append-only logic; CDC 1.1 ensures immutability
-- No `created_at` / `updated_at` — only `cdc_index` for incremental loads
-- Flags precomputed to avoid repeated logic in insight stage
+### ✅ Notes
+
+- Append-only ingestion — no updates or deletes  
+- `cdc_index` enables checkpointed ingestion in pipelines  
+- Flags support real-time anomaly monitoring in dashboards  
+- Serves as input for behavioral scoring and velocity models

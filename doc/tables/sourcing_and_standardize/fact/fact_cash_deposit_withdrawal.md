@@ -11,39 +11,24 @@ This table captures all cash-based deposit and withdrawal transactions conducted
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table  | Description                  |
-|----------------|-------------------|------------------------------|
-| `Account_ID`   | `Dim_Account`     | Account involved in cash txn |
-| `Channel`      | `Dim_Channel`     | Channel used (ATM, Branch)   |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name  | Raw Type | Standardized Column Name   | Standardized Type | Description                                  | PK  | Note                     |
-|------------------|----------|-----------------------------|--------------------|----------------------------------------------|-----|--------------------------|
-| `Txn_ID`         | VARCHAR  | `Txn_ID`                    | VARCHAR            | Unique ID of the transaction                 | ✅  | Composite primary key    |
-| `Account_ID`     | VARCHAR  | `Account_ID`                | VARCHAR            | Account associated with the transaction      |     | FK to `Dim_Account`      |
-| `Txn_Date`       | DATE     | `Txn_Date`                  | DATE               | Date of transaction                          |     | Partitioning source      |
-| `Txn_Type`       | VARCHAR  | `Txn_Type`                  | VARCHAR            | DEPOSIT or WITHDRAWAL                        |     | AML logic input          |
-| `Amount`         | DECIMAL  | `Amount`                    | DECIMAL            | Cash amount                                  |     | Used in structuring rule |
-| `Channel`        | VARCHAR  | `Channel`                   | VARCHAR            | ATM, BRANCH, etc.                            |     |                           |
-| `Location`       | VARCHAR  | `Location`                  | VARCHAR            | Branch or ATM location                       |     | Geographic tracking       |
-| `Handled_By`     | VARCHAR  | `Handled_By`                | VARCHAR            | Teller ID or device                          |     | Optional audit trail      |
-| *(N/A)*          | *(N/A)*  | `f_structuring_flag`        | BOOLEAN            | TRUE if customer deposited >300M via small txns |  | AML scenario flag        |
-
----
-
-### 🧪 Technical Fields (Standardize for Insight):
-
-| Column Name           | Type       | Description |
-|------------------------|------------|-------------|
-| `cdc_change_type`      | STRING     | Always `'cdc_insert'` |
-| `cdc_index`            | LONG       | Sequential ingest ID  |
-| `scd_change_timestamp` | TIMESTAMP  | Load time             |
-| `ds_partition_date`    | DATE       | Usually `Txn_Date`    |
+| Raw/Fact_Cash_Deposit_Withdrawal | Raw Type | Standardized/std_Cash_Deposit_Withdrawal | Standardized Type | Standardized/std_Cash_Deposit_Withdrawal_Hist | Description                                          | PK  | Note                         |
+|----------------------------------|----------|-------------------------------------------|-------------------|--------------------------------------------------|------------------------------------------------------|-----|------------------------------|
+| `Txn_ID`                         | VARCHAR  | `Txn_ID`                                  | VARCHAR           | `Txn_ID`                                        | Unique identifier for the transaction                | ✅  | Composite key with partition |
+| `Account_ID`                     | VARCHAR  | `Account_ID`                              | VARCHAR           | `Account_ID`                                    | Account associated with the cash transaction         |     | FK to `Dim_Account`          |
+| `Txn_Date`                       | DATE     | `Txn_Date`                                | DATE              | `Txn_Date`                                      | Date of transaction                                  |     | FK to `Dim_Time`             |
+| `Txn_Type`                       | VARCHAR  | `Txn_Type`                                | VARCHAR           | `Txn_Type`                                      | DEPOSIT or WITHDRAWAL                                |     | AML logic input              |
+| `Amount`                         | DECIMAL  | `Amount`                                  | DECIMAL           | `Amount`                                        | Amount of cash transacted                            |     |                              |
+| `Channel`                        | VARCHAR  | `Channel`                                 | VARCHAR           | `Channel`                                       | ATM, BRANCH, etc.                                    |     | FK to `Dim_Channel`          |
+| `Location`                       | VARCHAR  | `Location`                                | VARCHAR           | `Location`                                      | Branch or ATM location                               |     | Used in geo-analysis         |
+| `Handled_By`                     | VARCHAR  | `Handled_By`                              | VARCHAR           | `Handled_By`                                    | Teller ID or device identifier                       |     | Optional audit trail         |
+| *(Derived)*                      | *(N/A)*  | `f_structuring_flag`                      | BOOLEAN           | `f_structuring_flag`                            | TRUE if customer deposited >300M via small txns      |     | AML structuring scenario     |
+|**Technical Fields (for CDC 1.1)**|          |                                           |                   |                                                  |                                                      |     |                              |
+|                                  |          | `cdc_change_type`                         | STRING            | `cdc_change_type`                               | Always `'cdc_insert'` (append-only)                  |     | CDC 1.1 logic                 |
+|                                  |          | `cdc_index`                               | LONG              | `cdc_index`                                     | Monotonic ingestion checkpoint                       |     | Required                     |
+|                                  |          | `scd_change_timestamp`                    | TIMESTAMP         | `scd_change_timestamp`                          | Timestamp when record was loaded                     |     | Audit field                   |
+|                                  |          |                                           |                   | `ds_partition_date`                             | Partition column (derived from `Txn_Date`)           | ✅  | Required for fact partition  |
 
 ---
 
@@ -61,11 +46,13 @@ This table captures all cash-based deposit and withdrawal transactions conducted
 |-----------------------|---------|-----------------------------------------------------------------------|
 | `f_structuring_flag`  | BOOLEAN | TRUE if total DEPOSITs in 7 days > 300M VND and no single txn > 100M |
 
-> 💡 Requires window aggregation by `Customer_ID`, filter by `Txn_Type = 'DEPOSIT'`, and rolling sum logic.
+> 💡 Requires Spark window-based aggregation:
+> Partition by `Customer_ID`, filter where `Txn_Type = 'DEPOSIT'`, and compute rolling 7-day sums.
 
 ---
 
-### ✅ Notes:
-- Applies primarily to **cash-based DEPOSITs**
-- Often used by smurfing operations to avoid threshold detection
-- Use with `Location`, `Channel`, and `Handled_By` for geographic or device-based analysis
+### ✅ Notes
+
+- Designed for detection of **layering and smurfing** via cash
+- Leverages `Channel`, `Location`, `Handled_By` to trace behavioral or device anomalies
+- Used in threshold violation monitoring and alert generation

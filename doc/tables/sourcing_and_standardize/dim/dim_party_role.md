@@ -11,33 +11,28 @@ This dimension defines the type of role a party (individual or organization) can
 
 ---
 
-### 📊 Key Columns:
+### 📊 Key Columns (Standardize)
 
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                     | PK  | Note         |
-|----------------------|----------|---------------------------|--------------------|-------------------------------------------------|-----|--------------|
-| `Role_ID`            | VARCHAR  | `Role_ID`                 | VARCHAR            | Unique identifier for party role               | ✅  | Primary key  |
-| `Role_Name`          | VARCHAR  | `Role_Name`               | VARCHAR            | Name of the role (e.g., Guarantor, Director)   |     | Used in UI/reporting |
-| `Description`        | VARCHAR  | `Description`             | VARCHAR            | Optional narrative explaining the role         |     |               |
-
----
-
-### 🧪 Technical Fields (for SCD2 tracking):
-
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|
-| `cdc_index`            | INT        | Sequence for versioning                       |
-| `scd_change_timestamp` | TIMESTAMP  | Timestamp of last update                      |
-| `ds_partition_date`    | DATE       | Partition date                                |
-| `created_at`           | TIMESTAMP  | Record creation timestamp                     |
-| `updated_at`           | TIMESTAMP  | Last modified timestamp                       |
-| `dtf_start_date`       | DATE       | Start of validity                             |
-| `dtf_end_date`         | DATE       | End of validity                               |
-| `dtf_current_flag`     | BOOLEAN    | TRUE if currently active                      |
+| Raw/Dim_Party_Role | Raw Type | Standardized/std_Party_Role | Standardized Type | Description                                   | PK  | Note                    |
+|--------------------|----------|------------------------------|-------------------|-----------------------------------------------|-----|-------------------------|
+| `Role_ID`          | VARCHAR  | `Role_ID`                    | VARCHAR           | Unique identifier for party role              | ✅  | Primary key             |
+| `Role_Name`        | VARCHAR  | `Role_Name`                  | VARCHAR           | Name of the role (e.g., Guarantor, Director)  |     | Used in UI/reporting    |
+| `Description`      | VARCHAR  | `Description`                | VARCHAR           | Optional narrative explaining the role        |     |                         |
+| `created_at`       | TIMESTAMP| `created_at`                 | TIMESTAMP         | Record creation timestamp                     |     | CDC 1.3 required         |
+| `updated_at`       | TIMESTAMP| `updated_at`                 | TIMESTAMP         | Last modified timestamp                       |     | CDC 1.3 required         |
+|**Technical Fields (for CDC + audit + snapshot logic)**|          |                        |                   |                                               |     |                         |
+|                    |          | `scd_change_type`            | STRING            | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|     | CDC 1.3 logic            |
+|                    |          | `cdc_index`                  | INT               | Sequence for versioning                       |     | Optional                 |
+|                    |          | `scd_change_timestamp`       | TIMESTAMP         | Ingestion timestamp                           |     |                         |
+|                    |          | `dtf_start_date`             | DATE              | Start of validity                             |     |                         |
+|                    |          | `dtf_end_date`               | DATE              | End of validity                               |     | NULL = currently active  |
+|                    |          | `dtf_current_flag`           | BOOLEAN           | TRUE if currently active                      |     |                         |
+|                    |          |                              |                   | `ds_partition_date`                           | Partition column for history table             |     | `_Hist` table only       |
 
 ---
 
-### ✅ Notes:
-- Used with `Fact_Party_Linkage`, `Dim_Party`, and external KYC registries
-- Enables role-based screening and beneficial ownership modeling
-- Can be maintained in sync with onboarding questionnaire options
+### ✅ Notes
+
+- Used with `Fact_Party_Linkage`, `Dim_Party`, and external KYC registries  
+- Enables role-based screening and beneficial ownership modeling  
+- Can be maintained in sync with onboarding questionnaire options  

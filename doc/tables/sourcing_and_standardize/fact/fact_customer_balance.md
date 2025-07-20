@@ -11,42 +11,27 @@ This table tracks the daily closing balance for each customer's account. It is u
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Customer_ID`  | `Dim_Customer`         | Customer identifier  |
-| `Account_ID`   | `Dim_Account_Payment`  | Account reference  |
-| `Date_ID`      | `Dim_Time`             | Date for which balance is reported  |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name  | Raw Type | Standardized Column Name | Standardized Type | Description                              | PK  | Note                         |
-|------------------|----------|---------------------------|--------------------|------------------------------------------|-----|------------------------------|
-| `Customer_ID`    | VARCHAR  | `Customer_ID`             | VARCHAR            | Customer who owns the account            | ✅  | FK to `Dim_Customer`         |
-| `Account_ID`     | VARCHAR  | `Account_ID`              | VARCHAR            | Account belonging to customer            | ✅  | FK to `Dim_Account_Payment`  |
-| `Date_ID`        | DATE     | `Date_ID`                 | DATE               | Snapshot date of the balance             | ✅  | FK to `Dim_Time`             |
-| `Closing_Balance`| DECIMAL  | `Closing_Balance`         | DECIMAL            | Balance at end of the business day       |     |                              |
-| `Currency`       | VARCHAR  | `Currency`                | VARCHAR            | Currency of the balance                  |     |                              |
+| Raw/Fact_Customer_Balance | Raw Type | Standardized/std_Customer_Balance | Standardized Type | Standardized/std_Customer_Balance_Hist | Description                              | PK  | Note                         |
+|---------------------------|----------|-----------------------------------|-------------------|-----------------------------------------|------------------------------------------|-----|------------------------------|
+| `Customer_ID`             | VARCHAR  | `Customer_ID`                     | VARCHAR           | `Customer_ID`                           | Customer who owns the account            | ✅  | FK to `Dim_Customer`         |
+| `Account_ID`              | VARCHAR  | `Account_ID`                      | VARCHAR           | `Account_ID`                            | Account belonging to customer            | ✅  | FK to `Dim_Account_Payment`  |
+| `Date_ID`                 | DATE     | `Date_ID`                         | DATE              | `Date_ID`                               | Snapshot date of the balance             | ✅  | FK to `Dim_Time`             |
+| `Closing_Balance`         | DECIMAL  | `Closing_Balance`                 | DECIMAL           | `Closing_Balance`                       | Balance at end of the business day       |     |                              |
+| `Currency`                | VARCHAR  | `Currency`                        | VARCHAR           | `Currency`                              | Currency of the balance                  |     |                              |
+|**Technical Fields (for CDC 1.3)**|         |                                   |                   |                                         |                                          |     |                              |
+|                           |          | `cdc_change_type`                | STRING            | `cdc_change_type`                       | `'cdc_insert'` or `'cdc_update'`         |     | CDC 1.3 logic                 |
+|                           |          | `cdc_index`                      | INT               | `cdc_index`                             | Sequence index                           |     | Optional                     |
+|                           |          | `scd_change_timestamp`           | TIMESTAMP         | `scd_change_timestamp`                  | Ingestion timestamp                      |     |                              |
+|                           |          | `created_at`                     | TIMESTAMP         | `created_at`                            | Time record was first inserted           |     | Required for CDC 1.3         |
+|                           |          | `updated_at`                     | TIMESTAMP         | `updated_at`                            | Last update time                         |     | Required for CDC 1.3         |
+|                           |          |                                  |                   | `ds_partition_date`                     | Partition column                         | ✅  | Usually aligned with `Date_ID`|
 
 ---
 
-### 🧪 Technical Fields (for CDC + audit):
+### ✅ Notes
 
-| Raw Column Name        | Raw Type | Standardized Column Name | Standardized Type | Description                             | PK  | Note |
-|------------------------|----------|---------------------------|--------------------|-----------------------------------------|-----|------|
-| `cdc_change_type`      | STRING   | `cdc_change_type`         | STRING             | Change type from source (`insert`/`update`) |     | Via CDC 1.3 logic            |
-| `cdc_index`            | INT      | `cdc_index`               | INT                | Row sequence index                      |     | Optional                     |
-| `scd_change_timestamp` | TIMESTAMP| `scd_change_timestamp`    | TIMESTAMP          | Record load/ingestion timestamp         |     |                                |
-| `ds_partition_date`    | DATE     | `ds_partition_date`       | DATE               | Partitioning date (often = `Date_ID`)   |     |                                |
-| `created_at`           | TIMESTAMP| `created_at`              | TIMESTAMP          | Time record was first inserted          |     |                                |
-| `updated_at`           | TIMESTAMP| `updated_at`              | TIMESTAMP          | Last update time (upserted)             |     |                                |
-
----
-
-### ✅ Notes:
-- Uses **CDC Type 1.3** for merge/update logic
-- One record per customer-account per day
-- Supports historical backfills and time series analytics
+- One record per `(Customer_ID, Account_ID, Date_ID)`  
+- Used for behavioral analysis, liquidity tracking, and time series modeling  
+- Required for trend flags in insight layer (e.g., balance drops, sudden increase)  

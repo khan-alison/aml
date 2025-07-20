@@ -1,56 +1,39 @@
-## 📜 Table: Dim_Employment
+## 📜 Table: Dim_Transaction_Reason
 
-This dimension stores employment information associated with each customer, including employer, industry, and income verification metadata. It is essential for income estimation, risk profiling, and enhanced due diligence (EDD).
+This dimension table defines the underlying business or behavioral reasons for financial transactions. It supports AML risk tagging, transaction classification, and contextual enrichment of suspicious activity patterns.
 
 - **Type**: Dimension  
 - **CDC Type**: `1.3`  
 - **Writer Type**: `scd2`  
-- **Primary Key**: `Employer_ID`  
+- **Primary Key**: `Reason_Code`  
 - **Partitioned By**: `ds_partition_date`  
-- **Description**: Captures customer employment data over time, supporting income modeling and customer segmentation.
+- **Description**: Controlled vocabulary of transaction reasons (e.g., salary, donation, loan repayment) with associated risk levels.
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column         | Referenced Table       | Description |
-|----------------|------------------------|-------------|
-| `Customer_ID`  | `Dim_Customer`         | The individual with this employment record  |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                   | PK  | Note               |
-|----------------------|----------|---------------------------|--------------------|-----------------------------------------------|-----|--------------------|
-| `Employer_ID`        | VARCHAR  | `Employer_ID`             | VARCHAR            | Unique ID for the employment record           | ✅  | Primary key        |
-| `Customer_ID`        | VARCHAR  | `Customer_ID`             | VARCHAR            | FK to customer being employed                 |     | FK to `Dim_Customer` |
-| `Job_Title`          | VARCHAR  | `Job_Title`               | VARCHAR            | Customer’s role or position                   |     |                     |
-| `Company_Name`       | VARCHAR  | `Company_Name`            | VARCHAR            | Employer organization name                    |     |                     |
-| `Industry`           | VARCHAR  | `Industry`                | VARCHAR            | Sector or economic domain of the company      |     | Standardized value   |
-| `Income_Source`      | VARCHAR  | `Income_Source`           | VARCHAR            | Declared income stream (e.g., salary, bonus)  |     |                     |
-| `Verification_Date`  | DATE     | `Verification_Date`       | DATE               | When this information was verified            |     | Can align with KYC audit |
+| Raw/Dim_Transaction_Reason | Raw Type | Standardized/std_Transaction_Reason | Standardized Type | Standardized/std_Transaction_Reason_Hist | Description                                     | PK  | Note                     |
+|----------------------------|----------|-------------------------------------|-------------------|-------------------------------------------|-------------------------------------------------|-----|--------------------------|
+| `Reason_Code`              | VARCHAR  | `Reason_Code`                       | VARCHAR           | `Reason_Code`                              | Code representing reason for transaction        | ✅  | Primary key              |
+| `Reason_Desc`              | VARCHAR  | `Reason_Desc`                       | VARCHAR           | `Reason_Desc`                              | Description of transaction purpose              |     | Used for classification  |
+| `Risk_Level`               | VARCHAR  | `Risk_Level`                        | VARCHAR           | `Risk_Level`                               | LOW, MEDIUM, HIGH (risk severity)               |     | Links to `Dim_Risk_Level` |
+| `created_at`               | TIMESTAMP| `created_at`                        | TIMESTAMP         | `created_at`                               | Record creation timestamp                       |     | From source system        |
+| `updated_at`               | TIMESTAMP| `updated_at`                        | TIMESTAMP         | `updated_at`                               | Record last modified timestamp                  |     | Required for CDC 1.3      |
+|Technical Fields (for CDC + audit + snapshot logic)|
+|                            |          | `scd_change_type`                   | STRING            | `scd_change_type`                          | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'` |     | SCD2 logic                |
+|                            |          | `cdc_index`                         | INT               | `cdc_index`                                | Ingestion order checkpoint                      |     | Optional                  |
+|                            |          | `scd_change_timestamp`              | TIMESTAMP         | `scd_change_timestamp`                     | Timestamp of CDC ingestion                      |     | Required                  |
+|                            |          | `dtf_start_date`                    | DATE              | `dtf_start_date`                           | Version start validity                          |     |                          |
+|                            |          | `dtf_end_date`                      | DATE              | `dtf_end_date`                             | Version end validity (NULL = active)            |     |                          |
+|                            |          | `dtf_current_flag`                  | BOOLEAN           | `dtf_current_flag`                         | TRUE = current active version                   |     |                          |
+|                            |          |                                     |                   | `ds_partition_date`                        | Partition column for history table              |     | `_Hist` table only        |
 
 ---
 
-### 🧪 Technical Fields (for SCD2 tracking):
+### ✅ Business Use Cases
 
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|
-| `cdc_index`            | INT        | Change tracking index                         |
-| `scd_change_timestamp` | TIMESTAMP  | Timestamp of record load/update               |
-| `ds_partition_date`    | DATE       | Partition field                               |
-| `created_at`           | TIMESTAMP  | When record was created                       |
-| `updated_at`           | TIMESTAMP  | When record was last updated                  |
-| `dtf_start_date`       | DATE       | Valid-from date (SCD2)                        |
-| `dtf_end_date`         | DATE       | Valid-until date                              |
-| `dtf_current_flag`     | BOOLEAN    | TRUE if currently active record               |
-
----
-
-### ✅ Notes:
-- Joins with `Dim_Customer`, `Fact_Customer_Income`, and onboarding KYC
-- Can be used in rules like: “Unverified employment with high-risk income type”
-- Helps enrich income estimation models for segmenting salaried vs non-salaried
-
+- Classify transactions by behavioral intent for AML profiling  
+- Join with `Fact_Transaction` to contextualize suspicious patterns  
+- Tag high-risk transaction types (e.g., offshore transfers, cash deposits)  
+- Use in scoring and alert generation for unusual or misaligned transaction justifications

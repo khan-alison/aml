@@ -28,6 +28,8 @@ This dimension stores full daily snapshots of customer KYC profile information t
 | `Email`                     | VARCHAR  | `Email`                                | VARCHAR           | `Email`                                     | Email address                                 |     |                             |
 | `Customer_Open_Date`        | DATE     | `Customer_Open_Date`                   | DATE              | `Customer_Open_Date`                        | Date the customer was onboarded               |     |                             |
 | `PEP_Flag`                  | BOOLEAN  | `PEP_Flag`                             | BOOLEAN           | `PEP_Flag`                                  | Politically Exposed Person flag               |     | Regulatory watch            |
+| `created_at`                | TIMESTAMP| `created_at`                           | TIMESTAMP         | `created_at`                                | Record creation time from source              |     | CDC 1.3 required             |
+| `updated_at`                | TIMESTAMP| `updated_at`                           | TIMESTAMP         | `updated_at`                                | Last update time from source                  |     | CDC 1.3 required             |
 |Technical Fields (for CDC + audit + snapshot logic)|
 |                              |          | `scd_change_type`                      | STRING            | `scd_change_type`                           | `'cdc_insert'` or `'cdc_update'`              |     | CDC 1.3 logic                |
 |                              |          | `cdc_index`                            | INT               | `cdc_index`                                 | Change index (optional)                       |     |                             |
@@ -35,7 +37,7 @@ This dimension stores full daily snapshots of customer KYC profile information t
 |                              |          | `dtf_start_date`                       | DATE              | `dtf_start_date`                            | Snapshot validity start date                  |     |                             |
 |                              |          | `dtf_end_date`                         | DATE              | `dtf_end_date`                              | Snapshot end date (NULL = current)            |     |                             |
 |                              |          | `dtf_current_flag`                     | BOOLEAN           | `dtf_current_flag`                          | TRUE = currently active snapshot              |     |                             |
-|                              |          |                                         |                  | `ds_partition_date`                         | Partition column in `_hist` table only        |     |                             |
+|                              |          |                                         |                   | `ds_partition_date`                         | Partition column in `_hist` table only        |     |                             |
 
 ---
 

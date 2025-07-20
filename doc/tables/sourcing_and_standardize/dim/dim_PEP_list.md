@@ -11,33 +11,28 @@ This dimension represents the latest list of Politically Exposed Persons (PEPs),
 
 ---
 
-### 📊 Key Columns:
+### 📊 Key Columns (Standardize)
 
-| Raw Column Name       | Raw Type | Standardized Column Name | Standardized Type | Description                                    | PK  | Note                    |
-|------------------------|----------|---------------------------|--------------------|------------------------------------------------|-----|-------------------------|
-| `National_ID`          | VARCHAR  | `National_ID`             | VARCHAR            | National ID or equivalent unique identifier    | ✅  | Primary key             |
-| `Name`                | VARCHAR  | `Name`                    | VARCHAR            | Full name of the PEP                          |     | Used in screening        |
-| `Country`             | VARCHAR  | `Country`                 | VARCHAR            | Jurisdiction where the person holds office     |     | Maps to `Dim_Country`    |
-| `Position`            | VARCHAR  | `Position`                | VARCHAR            | Official or political position held            |     | Can be minister, judge, etc. |
-| `Last_Verified_Date`  | DATE     | `Last_Verified_Date`      | DATE               | Date the entry was last validated              |     | Regular update expected  |
-
----
-
-### 🧪 Technical Fields:
-
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`                |
-| `cdc_index`            | INT        | Optional index                                |
-| `scd_change_timestamp` | TIMESTAMP  | Timestamp of last load                        |
-| `ds_partition_date`    | DATE       | Partitioning date                             |
-| `created_at`           | TIMESTAMP  | Ingestion timestamp                           |
-| `updated_at`           | TIMESTAMP  | Time of latest update                         |
+| Raw/Dim_PEP_List   | Raw Type | Standardized/std_PEP_List | Standardized Type | Description                                       | PK  | Note                     |
+|--------------------|----------|----------------------------|-------------------|---------------------------------------------------|-----|--------------------------|
+| `National_ID`      | VARCHAR  | `National_ID`              | VARCHAR           | National ID or unique identifier of the PEP       | ✅  | Primary key              |
+| `Name`             | VARCHAR  | `Name`                     | VARCHAR           | Full name of the PEP                              |     | Used in screening         |
+| `Country`          | VARCHAR  | `Country`                  | VARCHAR           | Country or jurisdiction where the PEP holds office|     | FK to `Dim_Country`       |
+| `Position`         | VARCHAR  | `Position`                 | VARCHAR           | Title or political position                       |     | Minister, Judge, etc.     |
+| `Last_Verified_Date`| DATE    | `Last_Verified_Date`       | DATE              | When this record was last confirmed or updated    |     | Refresh needed regularly  |
+| `created_at`       | TIMESTAMP| `created_at`               | TIMESTAMP         | Timestamp when row was ingested                   |     | Required for CDC 1.3      |
+| `updated_at`       | TIMESTAMP| `updated_at`               | TIMESTAMP         | Last updated timestamp from source                |     | Required for CDC 1.3      |
+| **Technical Fields (for CDC + audit)** |          |                        |                   |                                                   |     |                          |
+|                    |          | `scd_change_type`          | STRING            | `'cdc_insert'` or `'cdc_update'`                 |     | CDC 1.3 logic              |
+|                    |          | `cdc_index`                | INT               | Optional monotonic change order                  |     |                          |
+|                    |          | `scd_change_timestamp`     | TIMESTAMP         | Time of snapshot ingestion                        |     |                          |
+|                    |          | `ds_partition_date`        | DATE              | Partition date used for storage                   |     | Required                   |
 
 ---
 
-### ✅ Notes:
-- Typically sourced from public or vendor-managed PEP databases
-- Should be joined to `Dim_Customer` for flagging and scoring
-- Requires regular refresh and audit for regulatory compliance
+### ✅ Notes
 
+- Typically sourced from government or vendor-maintained watchlists  
+- Supports join with `Dim_Customer` on ID or name for real-time alerting  
+- Enables scoring models that raise risk based on PEP exposure  
+- Maintained via periodic batch loads with validation audit trail  

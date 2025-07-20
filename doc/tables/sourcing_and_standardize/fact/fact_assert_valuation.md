@@ -11,42 +11,29 @@ This table captures periodic valuation records of assets such as collateral, rea
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column           | Referenced Table       | Description |
-|------------------|------------------------|-------------|
-| `Asset_ID`       | `Dim_Asset` or `Dim_Collateral` | Asset being valued  |
-| `Valuation_Date` | `Dim_Time`             | Date of valuation    |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                     | PK  | Note                        |
-|---------------------|----------|---------------------------|--------------------|-------------------------------------------------|-----|-----------------------------|
-| `Asset_ID`          | VARCHAR  | `Asset_ID`                | VARCHAR            | Identifier of the asset                         | ✅  | FK to `Dim_Asset` or `Dim_Collateral` |
-| `Valuation_Date`    | DATE     | `Valuation_Date`          | DATE               | Date valuation was performed                    | ✅  | FK to `Dim_Time`             |
-| `Valuation_Amount`  | DECIMAL  | `Valuation_Amount`        | DECIMAL            | Estimated value of asset                        |     |                             |
-| `Source`            | VARCHAR  | `Source`                  | VARCHAR            | Source of valuation (internal, external)        |     |                             |
-| `Valuation_Type`    | VARCHAR  | `Valuation_Type`          | VARCHAR            | Type of valuation (market, book, appraisal)     |     |                             |
-| `Currency`          | VARCHAR  | `Currency`                | VARCHAR            | Currency used in valuation                      |     |                             |
+| Raw/Fact_Asset_Valuation | Raw Type | Standardized/std_Asset_Valuation | Standardized Type | Standardized/std_Asset_Valuation_Hist | Description                                      | PK  | Note                               |
+|---------------------------|----------|----------------------------------|-------------------|----------------------------------------|--------------------------------------------------|-----|------------------------------------|
+| `Asset_ID`               | VARCHAR  | `Asset_ID`                       | VARCHAR           | `Asset_ID`                             | Identifier of the asset                          | ✅  | FK to `Dim_Asset` or `Dim_Collateral` |
+| `Valuation_Date`         | DATE     | `Valuation_Date`                 | DATE              | `Valuation_Date`                       | Date valuation was performed                     | ✅  | FK to `Dim_Time`                    |
+| `Valuation_Amount`       | DECIMAL  | `Valuation_Amount`               | DECIMAL           | `Valuation_Amount`                     | Estimated value of the asset                     |     |                                     |
+| `Source`                 | VARCHAR  | `Source`                         | VARCHAR           | `Source`                               | Source of valuation (internal, external)         |     |                                     |
+| `Valuation_Type`         | VARCHAR  | `Valuation_Type`                 | VARCHAR           | `Valuation_Type`                       | Type (market, book, appraisal)                   |     |                                     |
+| `Currency`               | VARCHAR  | `Currency`                       | VARCHAR           | `Currency`                             | Currency of valuation                            |     | FK to `Dim_Currency`                |
+| `created_at`             | TIMESTAMP| `created_at`                     | TIMESTAMP         | `created_at`                           | Time when record was created                     |     | From source (CDC 1.3)               |
+| `updated_at`             | TIMESTAMP| `updated_at`                     | TIMESTAMP         | `updated_at`                           | Last updated timestamp                           |     | From source (CDC 1.3)               |
+|**Technical Fields (for CDC + audit + snapshot logic)**|          |                                  |                   |                                        |                                                  |     |                                     |
+|                           |          | `cdc_change_type`               | STRING            | `cdc_change_type`                      | `'cdc_insert'` or `'cdc_update'`                 |     | CDC 1.3 logic                        |
+|                           |          | `cdc_index`                     | INT               | `cdc_index`                            | Sequence/order indicator                         |     | Optional                            |
+|                           |          | `scd_change_timestamp`         | TIMESTAMP         | `scd_change_timestamp`                 | Time record was processed                        |     |                                     |
+|                           |          |                                  |                   | `ds_partition_date`                    | Partitioning date (usually `Valuation_Date`)     |     | `_Hist` table only                  |
 
 ---
 
-### 🧪 Technical Fields (for CDC + audit):
+### ✅ Business Use Cases
 
-| Raw Column Name        | Raw Type | Standardized Column Name | Standardized Type | Description                                  | PK  | Note |
-|------------------------|----------|---------------------------|--------------------|----------------------------------------------|-----|------|
-| `cdc_change_type`      | STRING   | `cdc_change_type`         | STRING             | `'cdc_insert'` or `'cdc_update'`             |     | CDC 1.3 logic           |
-| `cdc_index`            | INT      | `cdc_index`               | INT                | Sequence/order indicator                     |     | Optional                |
-| `scd_change_timestamp` | TIMESTAMP| `scd_change_timestamp`    | TIMESTAMP          | Time record was processed                    |     |                          |
-| `ds_partition_date`    | DATE     | `ds_partition_date`       | DATE               | Partitioning date (usually Valuation_Date)    |     |                          |
-| `created_at`           | TIMESTAMP| `created_at`              | TIMESTAMP          | Insertion timestamp                          |     |                          |
-| `updated_at`           | TIMESTAMP| `updated_at`              | TIMESTAMP          | Last update timestamp                        |     |                          |
-
----
-
-### ✅ Notes:
-- Captures multi-source valuations for risk modeling
-- Supports exposure monitoring, LTV adjustment, and fair-value reporting
-- Works well with `Fact_Collateral_Assignment` and loan provisioning modules
+- Capture multi-source asset valuations for regulatory and risk modeling  
+- Support LTV (loan-to-value) calculations and collateral adequacy checks  
+- Enable fair-value accounting and point-in-time risk assessments  
+- Join with `Fact_Collateral_Assignment` to monitor secured lending

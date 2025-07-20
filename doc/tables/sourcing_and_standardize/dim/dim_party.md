@@ -11,38 +11,33 @@ This dimension captures detailed reference information for external and internal
 
 ---
 
-### 📊 Key Columns:
+### 📊 Key Columns (Standardize)
 
-| Raw Column Name         | Raw Type | Standardized Column Name | Standardized Type | Description                                       | PK  | Note                  |
-|--------------------------|----------|---------------------------|--------------------|---------------------------------------------------|-----|-----------------------|
-| `Party_ID`               | VARCHAR  | `Party_ID`                | VARCHAR            | Unique party identifier                          | ✅  | Primary key           |
-| `Party_Type`            | VARCHAR  | `Party_Type`              | VARCHAR            | Type (e.g., INDIVIDUAL, CORPORATE, GOVERNMENT)   |     | Categorical           |
-| `Party_Name`            | VARCHAR  | `Party_Name`              | VARCHAR            | Name of the party                                |     | Screening use         |
-| `Registration_Number`   | VARCHAR  | `Registration_Number`     | VARCHAR            | Business or personal ID number                   |     | Can be sensitive (PII) |
-| `Country`               | VARCHAR  | `Country`                 | VARCHAR            | Country of registration or residence             |     | FK to `Dim_Country`    |
-| `Address`               | VARCHAR  | `Address`                 | VARCHAR            | Registered or known address                      |     | Can be PII             |
-| `Status`                | VARCHAR  | `Status`                  | VARCHAR            | ACTIVE, INACTIVE, CLOSED                         |     | Operational use        |
-| `Is_Customer_Flag`      | BOOLEAN  | `Is_Customer_Flag`        | BOOLEAN            | TRUE if also present in `Dim_Customer`           |     | Linkage to customers   |
+| Raw/Dim_Party       | Raw Type | Standardized/std_Party   | Standardized Type | Description                                      | PK  | Note                    |
+|---------------------|----------|---------------------------|-------------------|--------------------------------------------------|-----|-------------------------|
+| `Party_ID`          | VARCHAR  | `Party_ID`                | VARCHAR           | Unique party identifier                          | ✅  | Primary key             |
+| `Party_Type`        | VARCHAR  | `Party_Type`              | VARCHAR           | INDIVIDUAL, CORPORATE, GOVERNMENT, etc.          |     | Category classification |
+| `Party_Name`        | VARCHAR  | `Party_Name`              | VARCHAR           | Name of the party                                |     | Used in screening       |
+| `Registration_Number`| VARCHAR | `Registration_Number`     | VARCHAR           | Business or personal ID number                   |     | May be PII              |
+| `Country`           | VARCHAR  | `Country`                 | VARCHAR           | Country of residence or registration             |     | FK to `Dim_Country`     |
+| `Address`           | VARCHAR  | `Address`                 | VARCHAR           | Registered or known address                      |     | PII / location-based    |
+| `Status`            | VARCHAR  | `Status`                  | VARCHAR           | ACTIVE, INACTIVE, CLOSED                         |     | Lifecycle indicator     |
+| `Is_Customer_Flag`  | BOOLEAN  | `Is_Customer_Flag`        | BOOLEAN           | TRUE if this party also appears in `Dim_Customer`|     | Customer linkage         |
+| `created_at`        | TIMESTAMP| `created_at`              | TIMESTAMP         | Source system creation time                      |     | CDC 1.3 requirement      |
+| `updated_at`        | TIMESTAMP| `updated_at`              | TIMESTAMP         | Source system last modified time                 |     | CDC 1.3 requirement      |
+|**Technical Fields (for CDC + audit + snapshot logic)**|          |                         |                   |                                                  |     |                         |
+|                     |          | `scd_change_type`         | STRING            | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`   |     | SCD2 tracking            |
+|                     |          | `cdc_index`               | INT               | Row version sequencing                           |     | Optional                 |
+|                     |          | `scd_change_timestamp`    | TIMESTAMP         | Ingestion timestamp                              |     |                         |
+|                     |          | `dtf_start_date`          | DATE              | Start of current version                         |     |                         |
+|                     |          | `dtf_end_date`            | DATE              | End of version (NULL = current)                  |     |                         |
+|                     |          | `dtf_current_flag`        | BOOLEAN           | TRUE = currently active version                  |     |                         |
 
----
-
-### 🧪 Technical Fields (for SCD2 tracking):
-
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|
-| `cdc_index`            | INT        | Row index for ordering changes                |
-| `scd_change_timestamp` | TIMESTAMP  | Timestamp of ingestion                        |
-| `ds_partition_date`    | DATE       | Partition date for table                      |
-| `created_at`           | TIMESTAMP  | Record creation timestamp                     |
-| `updated_at`           | TIMESTAMP  | Record last modified timestamp                |
-| `dtf_start_date`       | DATE       | SCD2 start date                               |
-| `dtf_end_date`         | DATE       | SCD2 end date                                 |
-| `dtf_current_flag`     | BOOLEAN    | TRUE = record currently active                |
 
 ---
 
-### ✅ Notes:
-- Joins with `Fact_Party_Linkage`, `Fact_Transaction_Peer_Pair`, and alerts
-- Enables identification of related parties, shell companies, or duplicate identities
-- Can be loaded from internal registries and external watchlists
+### ✅ Notes
+
+- Joins with `Fact_Party_Linkage`, `Fact_Transaction_Peer_Pair`, and alerts  
+- Enables identification of related parties, shell companies, or duplicate identities  
+- Can be loaded from internal registries and external watchlists  

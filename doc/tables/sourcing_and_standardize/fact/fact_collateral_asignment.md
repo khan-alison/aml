@@ -11,46 +11,31 @@ This table records the assignment of collaterals to loans. It contains original 
 
 ---
 
-### 🔗 Foreign Keys and Relationships:
+### 📊 Key Columns (Standardize)
 
-| Column           | Referenced Table       | Description |
-|------------------|------------------------|-------------|
-| `Loan_ID`        | `Dim_Loan`             | Loan to which collateral is assigned  |
-| `Collateral_ID`  | `Dim_Collateral`       | Collateral asset reference            |
-| `Customer_ID`    | `Dim_Customer`         | Customer owning the collateral        |
-| `Assigned_Date`  | `Dim_Time`             | Date of assignment                    |
-
----
-
-### 📊 Key Columns:
-
-| Raw Column Name     | Raw Type | Standardized Column Name | Standardized Type | Description                                | PK  | Note                     |
-|---------------------|----------|---------------------------|--------------------|--------------------------------------------|-----|--------------------------|
-| `Loan_ID`           | VARCHAR  | `Loan_ID`                 | VARCHAR            | Loan ID associated with collateral         | ✅  | FK to `Dim_Loan`         |
-| `Collateral_ID`     | VARCHAR  | `Collateral_ID`           | VARCHAR            | Assigned collateral asset ID               | ✅  | FK to `Dim_Collateral`   |
-| `Customer_ID`       | VARCHAR  | `Customer_ID`             | VARCHAR            | Customer tied to loan and collateral       |     | FK to `Dim_Customer`     |
-| `Assigned_Date`     | DATE     | `Assigned_Date`           | DATE               | Assignment date of collateral              | ✅  | FK to `Dim_Time`         |
-| `Collateral_Value`  | DECIMAL  | `Collateral_Value`        | DECIMAL            | Value at time of assignment                |     |                          |
-| `Current_Value`     | DECIMAL  | `Current_Value`           | DECIMAL            | Most recent collateral value               |     |                          |
-| `LTV`               | DECIMAL  | `LTV`                     | DECIMAL            | Loan-to-Value ratio                        |     | Derived metric           |
-| `Currency`          | VARCHAR  | `Currency`                | VARCHAR            | Currency of the collateral valuation       |     |                          |
+| Raw/Fact_Collateral_Assignment | Raw Type | Standardized/std_Collateral_Assignment | Standardized Type | Standardized/std_Collateral_Assignment_Hist | Description                                | PK  | Note                     |
+|--------------------------------|----------|----------------------------------------|-------------------|---------------------------------------------|--------------------------------------------|-----|--------------------------|
+| `Loan_ID`                      | VARCHAR  | `Loan_ID`                              | VARCHAR           | `Loan_ID`                                   | Loan ID associated with collateral         | ✅  | FK to `Dim_Loan`         |
+| `Collateral_ID`                | VARCHAR  | `Collateral_ID`                        | VARCHAR           | `Collateral_ID`                             | Assigned collateral asset ID               | ✅  | FK to `Dim_Collateral`   |
+| `Customer_ID`                  | VARCHAR  | `Customer_ID`                          | VARCHAR           | `Customer_ID`                               | Customer tied to loan and collateral       |     | FK to `Dim_Customer`     |
+| `Assigned_Date`                | DATE     | `Assigned_Date`                        | DATE              | `Assigned_Date`                             | Assignment date of collateral              | ✅  | FK to `Dim_Time`         |
+| `Collateral_Value`             | DECIMAL  | `Collateral_Value`                     | DECIMAL           | `Collateral_Value`                          | Value at time of assignment                |     |                          |
+| `Current_Value`                | DECIMAL  | `Current_Value`                        | DECIMAL           | `Current_Value`                             | Most recent collateral value               |     |                          |
+| `LTV`                          | DECIMAL  | `LTV`                                  | DECIMAL           | `LTV`                                       | Loan-to-Value ratio                        |     | Derived metric           |
+| `Currency`                     | VARCHAR  | `Currency`                             | VARCHAR           | `Currency`                                  | Currency of the collateral valuation       |     |                          |
+|**Technical Fields (for CDC 1.3)**|         |                                        |                   |                                             |                                            |     |                          |
+|                                |          | `cdc_change_type`                      | STRING            | `cdc_change_type`                           | `'cdc_insert'` or `'cdc_update'`           |     | CDC 1.3 logic             |
+|                                |          | `cdc_index`                            | INT               | `cdc_index`                                 | Sequence/order indicator                   |     | Optional                  |
+|                                |          | `scd_change_timestamp`                 | TIMESTAMP         | `scd_change_timestamp`                      | Time record was processed                  |     | Audit field               |
+|                                |          | `created_at`                           | TIMESTAMP         | `created_at`                                | Insertion timestamp                        |     | Required for CDC 1.3      |
+|                                |          | `updated_at`                           | TIMESTAMP         | `updated_at`                                | Last update timestamp                      |     | Required for CDC 1.3      |
+|                                |          |                                        |                   | `ds_partition_date`                         | Partitioning date (aligned with assignment)| ✅  | Required for performance  |
 
 ---
 
-### 🧪 Technical Fields (for CDC + audit):
+### ✅ Notes
 
-| Raw Column Name        | Raw Type | Standardized Column Name | Standardized Type | Description                                  | PK  | Note |
-|------------------------|----------|---------------------------|--------------------|----------------------------------------------|-----|------|
-| `cdc_change_type`      | STRING   | `cdc_change_type`         | STRING             | `'cdc_insert'` or `'cdc_update'`             |     | CDC 1.3 logic           |
-| `cdc_index`            | INT      | `cdc_index`               | INT                | Sequence/order indicator                     |     | Optional                |
-| `scd_change_timestamp` | TIMESTAMP| `scd_change_timestamp`    | TIMESTAMP          | Time record was processed                    |     |                          |
-| `ds_partition_date`    | DATE     | `ds_partition_date`       | DATE               | Partitioning date (aligned with assignment)  |     |                          |
-| `created_at`           | TIMESTAMP| `created_at`              | TIMESTAMP          | Insertion timestamp                          |     |                          |
-| `updated_at`           | TIMESTAMP| `updated_at`              | TIMESTAMP          | Last update timestamp                        |     |                          |
-
----
-
-### ✅ Notes:
-- Captures both original and dynamic value of pledged collateral
-- Supports credit risk LTV calculations and collateral risk monitoring
-- Enables secured lending traceability per customer and loan
+- Captures both original and dynamic value of pledged collateral  
+- Supports credit risk LTV calculations and collateral risk monitoring  
+- Enables secured lending traceability per customer and loan  
+- `ds_partition_date` typically aligns with `Assigned_Date` for optimal query filtering  

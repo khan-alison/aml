@@ -161,15 +161,6 @@ Table Dim_Customer_Asset_Ownership {
   Declaration_Date date
 }
 
-Table Dim_Customer_Wealth_Profile {
-  Customer_ID varchar [pk]
-  Date_ID date
-  Total_Balance decimal
-  Total_Assets decimal
-  Estimated_Income decimal
-  Loan_Exposure decimal
-  Wealth_Tier varchar
-}
 
 Table Dim_Account_Balance_Snapshot {
   Account_ID varchar [pk]
@@ -230,6 +221,17 @@ Table Hist_Dim_Employment {
   ds_partition_date date
 }
 
+Table Dim_Asset_Risk_Profile {
+  Asset_ID varchar [pk]
+  Customer_ID varchar
+  Asset_Type varchar
+  Risk_Category varchar
+  Valuation_Amount decimal
+  Valuation_Date date
+  Country_Code varchar
+  created_at timestamp
+  updated_at timestamp
+}
 // ==================== FACT TABLES ====================
 Table Fact_Transaction {
   Transaction_ID varchar [pk]
@@ -435,5 +437,6 @@ Ref: Dim_Account_Balance_Snapshot.Customer_ID > Dim_Customer.Customer_ID
 Ref: Dim_KYC_Profile_Snapshot.Customer_ID > Dim_Customer.Customer_ID
 Ref: Hist_Dim_Employment.Customer_ID > Dim_Customer.Customer_ID
 Ref: Fact_Alert.Triggered_By_Rule > Dim_Compliance_Rule_Snapshot.Rule_ID
-Ref: Dim_Customer_Wealth_Profile.Customer_ID > Dim_Customer.Customer_ID
-Ref: Dim_Customer_Wealth_Profile.Date_ID > Dim_Time.Date_ID
+Ref: Dim_Asset_Risk_Profile.Asset_ID > Dim_Asset.Asset_ID
+Ref: Dim_Asset_Risk_Profile.Customer_ID > Dim_Customer.Customer_ID
+Ref: Dim_Asset_Risk_Profile.Country_Code > Dim_Country.Country_Code

@@ -11,33 +11,29 @@ This dimension defines the classification and description of each transaction ty
 
 ---
 
-### 📊 Key Columns:
+### 📊 Key Columns (Standardize)
 
-| Raw Column Name         | Raw Type | Standardized Column Name     | Standardized Type | Description                                 | PK  | Note         |
-|--------------------------|----------|-------------------------------|--------------------|---------------------------------------------|-----|--------------|
-| `Transaction_Type_ID`    | VARCHAR  | `Transaction_Type_ID`         | VARCHAR            | Unique ID for the transaction type          | ✅  | Primary key  |
-| `Transaction_Code`       | VARCHAR  | `Transaction_Code`            | VARCHAR            | Internal or standard code (e.g., TR001)     |     | Used for joins |
-| `Description`            | VARCHAR  | `Description`                 | VARCHAR            | Human-readable transaction type label       |     |               |
-
----
-
-### 🧪 Technical Fields (for SCD2 tracking):
-
-| Field Name            | Type       | Description                                   |
-|------------------------|------------|-----------------------------------------------|
-| `scd_change_type`      | STRING     | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`|
-| `cdc_index`            | INT        | Row change index                              |
-| `scd_change_timestamp` | TIMESTAMP  | Record load timestamp                         |
-| `ds_partition_date`    | DATE       | Partition date                                |
-| `created_at`           | TIMESTAMP  | Time of creation                              |
-| `updated_at`           | TIMESTAMP  | Last modified timestamp                       |
-| `dtf_start_date`       | DATE       | SCD2 effective start date                     |
-| `dtf_end_date`         | DATE       | SCD2 effective end date                       |
-| `dtf_current_flag`     | BOOLEAN    | TRUE if record is currently active            |
+| Raw/Dim_Transaction_Type | Raw Type | Standardized/std_Transaction_Type | Standardized Type | Standardized/std_Transaction_Type_Hist | Description                                 | PK  | Note          |
+|---------------------------|----------|-----------------------------------|-------------------|-----------------------------------------|---------------------------------------------|-----|---------------|
+| `Transaction_Type_ID`     | VARCHAR  | `Transaction_Type_ID`             | VARCHAR           | `Transaction_Type_ID`                   | Unique ID for the transaction type          | ✅  | Primary key   |
+| `Transaction_Code`        | VARCHAR  | `Transaction_Code`                | VARCHAR           | `Transaction_Code`                      | Internal or external code (e.g., TR001)     |     | Used in joins |
+| `Description`             | VARCHAR  | `Description`                     | VARCHAR           | `Description`                           | Human-readable transaction type label       |     |               |
+| `created_at`              | TIMESTAMP| `created_at`                      | TIMESTAMP         | `created_at`                             | Record creation timestamp                   |     | CDC 1.3        |
+| `updated_at`              | TIMESTAMP| `updated_at`                      | TIMESTAMP         | `updated_at`                             | Last modified timestamp                     |     | CDC 1.3        |
+|Technical Fields (for CDC + audit + snapshot logic)|
+|                           |          | `scd_change_type`                 | STRING            | `scd_change_type`                        | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'` |     | SCD2 tracking |
+|                           |          | `cdc_index`                       | INT               | `cdc_index`                              | Ingestion index                             |     | Optional       |
+|                           |          | `scd_change_timestamp`           | TIMESTAMP         | `scd_change_timestamp`                   | Time of ingestion                           |     | Audit field    |
+|                           |          | `dtf_start_date`                 | DATE              | `dtf_start_date`                         | SCD2 effective start date                   |     |                |
+|                           |          | `dtf_end_date`                   | DATE              | `dtf_end_date`                           | SCD2 effective end date                     |     | NULL = active  |
+|                           |          | `dtf_current_flag`               | BOOLEAN           | `dtf_current_flag`                       | TRUE = currently active version             |     |                |
+|                           |          |                                  |                   | `ds_partition_date`                      | Partition field for history table           |     | `_Hist` only   |
 
 ---
 
-### ✅ Notes:
-- Joins to `Fact_Transaction`, `Fact_Card_Transaction`, etc.
-- Important for AML rules like detecting unusual transaction patterns
-- Used in dashboard filters and summary reporting
+### ✅ Business Use Cases
+
+- Categorize transactions for rule-based AML detection  
+- Join with `Fact_Transaction` or `Fact_Card_Transaction`  
+- Filter dashboards by transaction types  
+- Identify uncommon or suspicious transaction behavior
