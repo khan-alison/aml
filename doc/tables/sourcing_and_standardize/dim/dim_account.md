@@ -1,52 +1,45 @@
 ## 📜 Table: Dim_Account
 
-This dimension table defines each customer account in the banking system. It includes status, account type, and lifecycle dates. It supports analytical joins with all transaction, balance, and product fact tables.
+This dimension stores detailed account-level information, including type, currency, branch, open/close status, and customer linkage. It enables enrichment of transactions and balances, and supports product lifecycle analysis and AML profiling.
 
 - **Type**: Dimension  
 - **CDC Type**: `1.3`  
-- **Writer Type**: `scd2`  
-- **Primary Key**: `Account_ID` (business key) + surrogate key (optional)  
-- **Partitioned By**: `ds_partition_date`  
-- **Description**: Maintains current and historical view of bank account attributes using SCD2 tracking.
-
----
-
-### 🔗 Foreign Keys and Relationships
-
-| Column         | Referenced Table | Description                         |
-|----------------|------------------|-------------------------------------|
-| `Customer_ID`  | `Dim_Customer`   | Owner of the account                |
-| `Branch_ID`    | `Dim_Branch`     | Branch where the account was opened|
+- **Writer Type**: `scd4a`  
+- **Primary Key**: `Account_ID` (from source)  
+- **Partitioned By**: `ds_partition_date` (string, in `_Hist` table only)  
+- **Snapshot Strategy**: SCD4a – current record in main table, full history in `_Hist`
 
 ---
 
 ### 📊 Key Columns (Standardize)
 
-| Raw/Dim_Account     | Raw Type | Standardized/Dim_Account  | Standardized Type | Description                                  | PK  | Note                    |
-|---------------------|----------|----------------------------|-------------------|----------------------------------------------|-----|-------------------------|
-| `Account_ID`        | VARCHAR  | `Account_ID`               | VARCHAR           | Unique account identifier                    | ✅  | Business key            |
-| `Customer_ID`       | VARCHAR  | `Customer_ID`              | VARCHAR           | Customer who owns the account                |     | FK to `Dim_Customer`    |
-| `Account_Type`      | VARCHAR  | `Account_Type`             | VARCHAR           | Savings, Current, Term Deposit, etc.         |     |                         |
-| `Open_Date`         | DATE     | `Open_Date`                | DATE              | Account creation date                        |     |                         |
-| `Close_Date`        | DATE     | `Close_Date`               | DATE              | Closure date (if closed)                     |     |                         |
-| `Account_Status`    | VARCHAR  | `Account_Status`           | VARCHAR           | Status (e.g., ACTIVE, INACTIVE, CLOSED)      |     |                         |
-| `Currency`          | VARCHAR  | `Currency`                 | VARCHAR           | Currency in which account is operated        |     |                         |
-| `Branch_ID`         | VARCHAR  | `Branch_ID`                | VARCHAR           | Branch managing the account                  |     | FK to `Dim_Branch`      |
-| `created_at`        | TIMESTAMP| `created_at`               | TIMESTAMP         | Record creation timestamp (from source)      |     | Source column           |
-| `updated_at`        | TIMESTAMP| `updated_at`               | TIMESTAMP         | Record update timestamp (from source)        |     | Source column           |
-|Technical Fields (for CDC + audit + snapshot logic)|
-|                     |          | `scd_change_type`          | STRING            | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'` |     | SCD2 logic              |
-|                     |          | `cdc_index`                | INT               | Monotonic ingestion index                    |     | Optional                |
-|                     |          | `scd_change_timestamp`     | TIMESTAMP         | Time record was processed                    |     | Technical field         |
-|                     |          | `ds_partition_date`        | DATE              | Partition date                               |     | Technical field         |
-|                     |          | `dtf_start_date`           | DATE              | SCD2 effective start date                    |     | Technical field         |
-|                     |          | `dtf_end_date`             | DATE              | SCD2 effective end date                      |     | Technical field         |
-|                     |          | `dtf_current_flag`         | BOOLEAN           | TRUE if row is active                        |     | Technical field         |
+| Raw/Dim_Account   | Raw Type  | PK  | Standardized/Dim_Account | Standardized Type | Description                                         | Value of Technical Field         | Note                      |
+|-------------------|-----------|-----|----------------------------|--------------------|-----------------------------------------------------|----------------------------------|---------------------------|
+| `Account_ID`       | STRING    | ✅  | `Account_ID`              | STRING             | Unique identifier for the account                   |                                  | Natural key from source   |
+| `Customer_ID`      | STRING    |     | `Customer_ID`             | STRING             | Owner of the account                                |                                  | FK to `Dim_Customer`      |
+| `Account_Type`     | STRING    |     | `Account_Type`            | STRING             | Type of account (e.g., savings, current)            |                                  | Classification            |
+| `Currency_Code`    | STRING    |     | `Currency_Code`           | STRING             | Account currency code                               |                                  | FK to `Dim_Currency`      |
+| `Branch_Code`      | STRING    |     | `Branch_Code`             | STRING             | Opening branch of the account                       |                                  | FK to `Dim_Branch`        |
+| `Open_Date`        | DATE      |     | `Open_Date`               | DATE               | Date the account was opened                         |                                  |                            |
+| `Close_Date`       | DATE      |     | `Close_Date`              | DATE               | Date the account was closed (nullable)              |                                  |                            |
+| `Account_Status`   | STRING    |     | `Account_Status`          | STRING             | Status (Active, Dormant, Closed, etc.)              |                                  | Lifecycle tracking        |
+| `created_at`       | TIMESTAMP |     | `created_at`              | TIMESTAMP          | First seen in source                                | From source                      |                            |
+| `updated_at`       | TIMESTAMP |     | `updated_at`              | TIMESTAMP          | Last update seen in source                          | From source                      |                            |
+| **Technical Fields** |         |     |                            |                    |                                                     |                                  |                            |
+|                   |           |     | `ds_key`                  | STRING             | Surrogate primary key for standardized zone         | `Account_ID`                     | Required in DWH            |
+|                   |           |     | `cdc_index`               | INT                | Change capture flag                                 | `1` or `0`                       | 1 = current                |
+|                   |           |     | `cdc_change_type`         | STRING             | Type of CDC event                                   | `'cdc_insert'`, `'cdc_update'`  |                            |
+|                   |           |     | `scd_change_timestamp`    | TIMESTAMP          | Snapshot timestamp                                  | `updated_at` or job timestamp    |                            |
+|                   |           |     | `dtf_start_date`          | DATE               | Validity start date                                 | From `updated_at` or partition   |                            |
+|                   |           |     | `dtf_end_date`            | DATE               | Validity end date                                   | NULL if current                  |                            |
+|                   |           |     | `dtf_current_flag`        | BOOLEAN            | Current record flag                                 | TRUE/FALSE                       |                            |
+|                   |           |     | `ds_partition_date`       | STRING             | Partition column (`yyyy-MM-dd`)                     | Job run date                     | Used in `_Hist` only       |
 
 ---
 
-### ✅ Notes
+### ✅ Business Use Cases
 
-- SCD2 tracking helps identify account changes over time  
-- Supports transaction lineage, account closure trends, and regulatory tracking  
-- Access to sensitive information (status, close date) may be restricted
+- Enrich financial facts with account metadata (type, branch, status)  
+- Support lifecycle-based fraud rules (e.g., activity on closed accounts)  
+- Segment customers by account holdings and activity  
+- Enable snapshot tracking of account status for historical profiling  

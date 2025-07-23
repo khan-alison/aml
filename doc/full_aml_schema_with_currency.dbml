@@ -30,6 +30,8 @@ Table Dim_Account {
   Account_Status varchar
   Currency varchar
   Branch_ID varchar
+  created_at date
+  updated_at date
 }
 
 Table Dim_Transaction_Type {
@@ -73,6 +75,8 @@ Table Dim_Alert_Type {
   Scenario_Name varchar
   Detection_Rule text
   Severity_Level varchar
+  created_at date
+  updated_at date
 }
 
 Table Dim_PEP_List {
@@ -151,6 +155,8 @@ Table Dim_Asset {
   Customer_ID varchar
   Country varchar
   Asset_Status varchar
+  created_at date
+  updated_at date
 }
 
 Table Dim_Customer_Asset_Ownership {
@@ -172,6 +178,8 @@ Table Dim_Account_Balance_Snapshot {
   Account_Status varchar
   Overdraft_Limit decimal
   Branch_ID varchar
+  created_at date
+  updated_at date
 }
 
 Table Dim_KYC_Profile_Snapshot {

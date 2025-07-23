@@ -1,38 +1,38 @@
 ## 📜 Table: Dim_Country
 
-This dimension table stores reference data for countries, including names, codes, and compliance-related attributes such as risk level and sanction status. It is used in AML systems to evaluate jurisdictional risk, support transaction screening, and generate reports.
+This dimension provides the reference list of countries used throughout the AML system, including ISO codes, names, and risk classification levels. It supports geolocation, jurisdictional risk modeling, and cross-border rule enforcement.
 
 - **Type**: Dimension  
-- **CDC Type**: `1.3`  
-- **Writer Type**: `scd2`  
-- **Primary Key**: `Country_Code`  
-- **Partitioned By**: `ds_partition_date`  
-- **Description**: Contains country-level metadata, enabling risk scoring, jurisdictional filtering, and regulatory screening logic.
+- **CDC Type**: `1.1`  
+- **Writer Type**: `scd1`  
+- **Primary Key**: `Country_Code` (from source)  
+- **Partitioned By**: `ds_partition_date` (string)  
+- **Snapshot Strategy**: Not applicable – overwrite only (SCD1)
 
 ---
 
 ### 📊 Key Columns (Standardize)
 
-| Raw/Dim_Country    | Raw Type | Standardized/Dim_Country | Standardized Type | Description                                             | PK  | Note                      |
-|--------------------|----------|---------------------------|--------------------|---------------------------------------------------------|-----|---------------------------|
-| `Country_Code`     | VARCHAR  | `Country_Code`            | VARCHAR            | ISO country code or internal equivalent                 | ✅  | Primary key               |
-| `Country_Name`     | VARCHAR  | `Country_Name`            | VARCHAR            | Official name of the country                            |     |                           |
-| `Risk_Level`       | VARCHAR  | `Risk_Level`              | VARCHAR            | High/Medium/Low – used in jurisdiction scoring          |     | Controlled vocabulary     |
-| `Sanctioned_Flag`  | BOOLEAN  | `Sanctioned_Flag`         | BOOLEAN            | TRUE if the country is under sanctions                  |     | Used in blacklist screening|
-| `created_at`       | TIMESTAMP| `created_at`              | TIMESTAMP          | Initial load timestamp (from source system)             |     | Source column             |
-| `updated_at`       | TIMESTAMP| `updated_at`              | TIMESTAMP          | Last update timestamp (from source system)              |     | Source column             |
-|                    |          | `scd_change_type`         | STRING             | `'cdc_insert'`, `'cdc_update'`, `'cdc_delete'`          |     | SCD2 logic                |
-|                    |          | `cdc_index`               | INT                | Row change order index                                  |     | Optional                  |
-|                    |          | `scd_change_timestamp`    | TIMESTAMP          | Record ingestion or update timestamp                    |     | Technical field           |
-|                    |          | `ds_partition_date`       | DATE               | Partitioning column                                     |     | Technical field           |
-|                    |          | `dtf_start_date`          | DATE               | Validity start (SCD2 logic)                             |     | Technical field           |
-|                    |          | `dtf_end_date`            | DATE               | Validity end                                            |     | Technical field           |
-|                    |          | `dtf_current_flag`        | BOOLEAN            | TRUE = currently active row                             |     | Technical field           |
+| Raw/Dim_Country | Raw Type  | PK  | Standardized/Dim_Country | Standardized Type | Description                                         | Value of Technical Field       | Note                      |
+|-----------------|-----------|-----|----------------------------|--------------------|-----------------------------------------------------|-------------------------------|---------------------------|
+| `Country_Code`  | STRING    | ✅  | `Country_Code`            | STRING             | ISO code or internal code identifying the country   |                               | Natural key from source   |
+| `Country_Name`  | STRING    |     | `Country_Name`            | STRING             | Official name of the country                        |                               |                           |
+| `Region`        | STRING    |     | `Region`                  | STRING             | Continent or global region                          |                               | Optional grouping         |
+| `Is_High_Risk`  | BOOLEAN   |     | `Is_High_Risk`            | BOOLEAN            | TRUE if classified as high-risk jurisdiction        |                               | Used in AML rule filters  |
+| `created_at`    | TIMESTAMP |     | `created_at`              | TIMESTAMP          | First seen in source                                | From source                   |                           |
+| `updated_at`    | TIMESTAMP |     | `updated_at`              | TIMESTAMP          | Last updated from source                            | From source                   |                           |
+| **Technical Fields** |      |     |                            |                    |                                                     |                               |                           |
+|                 |           |     | `ds_key`                  | STRING             | Surrogate primary key for standardized zone         | `Country_Code`                | Required in DWH           |
+|                 |           |     | `cdc_index`               | INT                | Current record flag (always 1 in SCD1)              | `1`                          |                           |
+|                 |           |     | `cdc_change_type`         | STRING             | CDC event type                                      | `'cdc_insert'`               | Insert-only               |
+|                 |           |     | `scd_change_timestamp`    | TIMESTAMP          | Processing timestamp                                | `updated_at` or job time     |                           |
+|                 |           |     | `ds_partition_date`       | STRING             | Partition column (`yyyy-MM-dd`)                     | Job run date                 | Required                  |
 
 ---
 
-### ✅ Notes
+### ✅ Business Use Cases
 
-- Used in rules like: "Transactions from sanctioned or high-risk countries"  
-- Can be mapped to FATF or internal jurisdictional rating models  
-- Joins to `Fact_Transaction`, `Dim_Customer`, `Fact_Alert`, etc.
+- Support AML rules involving high-risk or sanctioned countries  
+- Enrich transactions and customer profiles with regional metadata  
+- Enable country-level aggregation for reporting and dashboards  
+- Power geo-based thresholds, limits, and scoring models  

@@ -1,0 +1,22 @@
+| 🔢 Scenario No. | 📌 Detection Scenario                                  | 🧱 Tables Involved                                                                                      | 🔢 No. of Tables |
+|----------------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------|------------------|
+| 1              | Round-Number Transactions                              | `Fact_Transaction`                                                                                      | 1                |
+| 2              | High Velocity in Dormant Account                       | `Fact_Transaction`                                                                                      | 1                |
+| 3              | Cross-Border High-Risk Jurisdictions                   | `Fact_Transaction`, `Dim_Country`                                                                       | 2                |
+| 4              | Synthetic Relationships Between Customers              | `Fact_Transaction`, `Dim_Customer`                                                                      | 2                |
+| 5              | Rapid In-Out Transactions                              | `Fact_Transaction`                                                                                      | 1                |
+| 6              | Sudden Debt Repayment Beyond Income                    | `Fact_Loan_Repayment`, `Fact_Customer_Income`                                                           | 2                |
+| 7              | Structuring / Smurfing                                 | `Fact_Transaction`                                                                                      | 1                |
+| 8              | Use of Multiple Accounts for Transfers                 | `Fact_Transaction`, `Dim_Customer`, `Dim_Account`                                                       | 3                |
+| 9              | Transactions with Unrelated Individuals                | `Fact_Transaction`, `Dim_Customer`                                                                      | 2                |
+| 10             | Early Loan Closure with Unexplained Funds              | `Fact_Loan_Repayment`, `Fact_Customer_Income`, `Dim_Loan`                                               | 3                |
+| 11             | Bidirectional Transfers Between Customers              | `Fact_Transaction`, `Fact_Transaction_Peer_Pair`                                                        | 2                |
+| 12             | High Transaction-to-Income Ratio                       | `Fact_Transaction`, `Fact_Customer_Income`                                                              | 2                |
+| 13             | Collateral Mismatch with Customer Profile              | `Fact_Collateral_Assignment`, `Fact_Customer_Income`                                                    | 2                |
+| 14             | Multiple Customers Linked to Same ID or Address       | `Dim_Customer`                                                                                           | 1                |
+| 15             | Frequent Foreign Currency Exchange                     | `Fact_Forex_Transaction`                                                                                | 1                |
+| 16             | KYC Profile Drift Over Time                            | `Dim_KYC_Event`, `Dim_KYC_Profile_Snapshot`                                                             | 2                |
+| 17             | Frequent Employer Changes                              | `Dim_Employment`                                                                                        | 1                |
+| 18             | Wealth Tier Fluctuation Without Explanation            | `Dim_Customer_Wealth_Profile`                                                                           | 1                |
+| 19             | Inconsistent Balance vs. Transactions                  | `Fact_Transaction`, `Dim_Account_Balance_Snapshot`                                                      | 2                |
+| 20             | Rule Change Immediately Before Alert                   | `Dim_Compliance_Rule_Snapshot`, `Alert_Fact`                                                            | 2                |

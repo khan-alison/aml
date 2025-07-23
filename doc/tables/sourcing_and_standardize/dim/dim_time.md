@@ -1,36 +1,40 @@
 ## 📜 Table: Dim_Time
 
-This is the standard time dimension used to support date-based partitioning, filtering, and aggregation across all fact tables. It provides multiple temporal breakdowns (year, quarter, month, etc.) to enable flexible time-based slicing.
+This is a static dimension used to represent calendar time. It includes days, months, quarters, and years, and is used for partitioning, time-based aggregation, and reporting filters across the AML platform.
 
 - **Type**: Dimension  
-- **CDC Type**: `1.1`  
-- **Writer Type**: `scd1`  
-- **Primary Key**: `Date_ID`  
-- **Partitioned By**: *(None – static table)*  
-- **Description**: Date dimension with calendar hierarchies and formats used across all reporting layers.
+- **CDC Type**: `0.0`  
+- **Writer Type**: `static`  
+- **Primary Key**: `Date_Key` (from source)  
+- **Partitioned By**: `ds_partition_date` (string)  
+- **Snapshot Strategy**: Not applicable – static reference table
 
 ---
 
 ### 📊 Key Columns (Standardize)
 
-| Raw/Dim_Time | Raw Type | Standardized/std_Time | Standardized Type | Standardized/std_Time_Hist | Description                                | PK  | Note                       |
-|--------------|----------|------------------------|-------------------|-----------------------------|--------------------------------------------|-----|----------------------------|
-| `Date_ID`    | DATE     | `Date_ID`              | DATE              | `Date_ID`                   | Unique date identifier (yyyy-MM-dd)        | ✅  | Primary key                |
-| `Year`       | INT      | `Year`                 | INT               | `Year`                      | Calendar year                              |     |                            |
-| `Month`      | INT      | `Month`                | INT               | `Month`                     | Calendar month (1–12)                      |     |                            |
-| `Quarter`    | INT      | `Quarter`              | INT               | `Quarter`                   | Quarter (1–4)                              |     |                            |
-| `Week`       | INT      | `Week`                 | INT               | `Week`                      | Week number of the year                    |     |                            |
-| `Day_of_Week`| VARCHAR  | `Day_of_Week`          | VARCHAR           | `Day_of_Week`               | Name or code of weekday (e.g., Mon)        |     |                            |
-| **Technical Fields (for CDC + audit)** |          |                        |                   |                             |                                            |     |                            |
-|              |          | `cdc_change_type`      | STRING            | `cdc_change_type`           | Always `'cdc_insert'`                      |     | CDC 1.1 static table logic |
-|              |          | `scd_change_timestamp` | TIMESTAMP         | `scd_change_timestamp`      | Load timestamp                             |     |                            |
-|              |          | `ds_partition_date`    | DATE              | `ds_partition_date`         | Static or aligned with fact partitions     |     | Optional for filtering     |
+| Raw/Dim_Time   | Raw Type  | PK  | Standardized/Dim_Time | Standardized Type | Description                                   | Value of Technical Field       | Note                        |
+|----------------|-----------|-----|-------------------------|--------------------|-----------------------------------------------|-------------------------------|-----------------------------|
+| `Date_Key`      | STRING    | ✅  | `Date_Key`              | STRING             | Unique date key in `yyyyMMdd` format           |                               | Natural key (e.g., 20240723)|
+| `Date`          | DATE      |     | `Date`                  | DATE               | Actual date                                    |                               |                            |
+| `Day`           | INT       |     | `Day`                   | INT                | Day of the month                               |                               |                            |
+| `Month`         | INT       |     | `Month`                 | INT                | Month number (1–12)                            |                               |                            |
+| `Quarter`       | STRING    |     | `Quarter`               | STRING             | Quarter name (e.g., Q1, Q2)                    |                               |                            |
+| `Year`          | INT       |     | `Year`                  | INT                | Calendar year                                  |                               |                            |
+| `Weekday_Name`  | STRING    |     | `Weekday_Name`          | STRING             | Day of the week (e.g., Monday)                 |                               |                            |
+| `Is_Weekend`    | BOOLEAN   |     | `Is_Weekend`            | BOOLEAN            | TRUE if Saturday/Sunday                        |                               |                            |
+| **Technical Fields** |       |     |                         |                    |                                               |                               |                            |
+|                |           |     | `ds_key`                | STRING             | Surrogate primary key                          | `Date_Key`                   | Required in DWH             |
+|                |           |     | `cdc_index`             | INT                | CDC flag (static = always 1)                   | `1`                          |                            |
+|                |           |     | `cdc_change_type`       | STRING             | CDC event type                                 | `'cdc_insert'`               | Static load                 |
+|                |           |     | `scd_change_timestamp`  | TIMESTAMP          | Timestamp of static load                       | Job run time                 |                            |
+|                |           |     | `ds_partition_date`     | STRING             | Partition column (`yyyy-MM-dd`)                | Job run date                 | Required                    |
 
 ---
 
-### ✅ Notes
+### ✅ Business Use Cases
 
-- No history tracking — values are static per date  
-- Essential for filtering, dashboard drilldowns, and time series models  
-- Can be enriched with holidays, fiscal flags, and working day indicators  
-- **CDC 1.1: Do not include `created_at`, `updated_at`**
+- Support partitioning across fact tables  
+- Enable consistent time-based grouping and rollups  
+- Power calendar filters and time intelligence in reports  
+- Required for joins with all transactional data  
