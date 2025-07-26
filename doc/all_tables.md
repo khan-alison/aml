@@ -54,14 +54,14 @@ This document summarizes the **CDC Types** (Change Data Capture) and **Writer Ty
 
 ## 5️⃣ Deposit, Loan, Balance
 
-| Table                              | CDC Type | Writer Type | Notes                                                           |
-|------------------------------------|----------|-------------|-----------------------------------------------------------------|
-| `Fact_Deposit`                     | 1.3      | factAppend  | Captures cash inflows to deposit products                      |
-| `Fact_Account_Balance_Snapshot`    | 1.3      | scd4a       | Daily snapshot of account balances                              |
-| `Fact_Loan_Repayment`             | 1.3      | factAppend  | Loan repayment facts                                            |
-| `Fact_Customer_Income`            | 1.3      | factAppend  | Inflows from salary/dividends to assess financial capability    |
+| Table                       | CDC Type | Writer Type | Notes                                                           |
+|-----------------------------|----------|-------------|-----------------------------------------------------------------|
+| `Fact_Deposit`              | 1.3      | factAppend  | Captures cash inflows to deposit products                      |
+| `Dim_Account_Balance`       | 1.3      | scd4a       | Daily snapshot of account balances per account                 |
+| `Dim_Loan_Repayment`        | 1.3      | scd4a       | Repayment details with historical tracking                     |
+| `Fact_Customer_Income`      | 1.3      | factAppend  | Verified inflows (salary, dividends) to assess financial behavior |
 
----
+--- 
 
 ## 6️⃣ Asset, Investment, Collateral
 
